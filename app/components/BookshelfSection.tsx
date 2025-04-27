@@ -1,6 +1,7 @@
 import { Card } from './Card';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef } from 'react';
+import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
+import { cn } from '../utils/cn';
 
 // Book data to match the image exactly
 const books = [
@@ -112,80 +113,152 @@ function chunkArray<T>(array: T[], size: number): T[][] {
 
 const booksByShelf = chunkArray(books, 5); // 5 books per shelf
 
-// Book component - Minor adjustments for shelf interaction
+// Book component with enhanced 3D opening animation
 const Book = ({ book, isSelected, onSelect }: { 
   book: typeof books[0]; 
   isSelected: boolean;
   onSelect: (id: number) => void;
 }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const coverRotation = useMotionValue(0);
+  const pagesRotation = useMotionValue(0);
+  
   return (
     <motion.div 
       className="relative cursor-pointer group perspective"
       onClick={() => onSelect(book.id)}
+      onHoverStart={() => setIsOpen(true)}
+      onHoverEnd={() => setIsOpen(false)}
       style={{ 
-          transformStyle: 'preserve-3d',
-          // Ensure books are positioned correctly relative to the shelf
-          position: 'relative',
-          bottom: '-2px' // Slightly adjust to sit on the shelf visually
-      }}
-      whileHover={{ 
-        y: -10, // Slightly less lift
-        rotateY: -5, // Subtle rotation
-        zIndex: 10,
-        transition: { duration: 0.2, ease: 'easeOut' }
+        transformStyle: 'preserve-3d',
+        position: 'relative',
+        bottom: '-2px', // Sit on the shelf visually
       }}
       animate={{
-        // Keep selection animation subtle
         y: isSelected ? -15 : 0,
         rotateY: isSelected ? -8 : 0,
-        z: isSelected ? 15 : 0, // Less Z translation
+        z: isSelected ? 15 : 0,
         transition: { type: 'spring', stiffness: 300, damping: 20 }
       }}
     >
-      {/* Book cover */}
+      {/* 3D Book container */}
       <div 
-          className="relative h-28 md:h-32 w-auto aspect-[2/3] overflow-visible rounded-sm shadow-md group-hover:shadow-lg transition-shadow duration-300"
-          style={{ transformStyle: 'preserve-3d' }}
+        className="relative h-28 md:h-32 w-auto aspect-[2/3] overflow-visible"
+        style={{ transformStyle: 'preserve-3d' }}
       >
-        {/* Main image */}
-        <img
-          src={book.imageUrl}
-          alt={book.title}
-          className="absolute inset-0 h-full w-full object-cover rounded-sm"
-          style={{ transform: 'translateZ(1px)' }} // Slightly lift cover
-        />
+        {/* Book Back Cover */}
+        <motion.div
+          className="absolute inset-0 bg-gray-800 rounded-sm shadow-md"
+          style={{ 
+            transformStyle: 'preserve-3d', 
+            backfaceVisibility: 'hidden',
+            transformOrigin: 'left center',
+          }}
+        ></motion.div>
+
+        {/* Book pages */}
+        <motion.div
+          className="absolute inset-0 bg-white rounded-r-sm"
+          style={{
+            transformStyle: 'preserve-3d',
+            transformOrigin: 'left center',
+            rotateY: pagesRotation,
+          }}
+          animate={{
+            rotateY: isOpen ? -160 : 0,
+            transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] }
+          }}
+        >
+          {/* Page texture */}
+          <div 
+            className="absolute inset-0 overflow-hidden"
+            style={{
+              background: 'repeating-linear-gradient(to bottom, transparent, transparent 9px, rgba(0,0,0,0.03) 10px)',
+            }}
+          >
+            {/* Page edge shadow */}
+            <div className="absolute top-0 right-0 bottom-0 w-[3px] bg-gradient-to-l from-gray-300 to-transparent"></div>
+          </div>
+        </motion.div>
         
-        {/* Book spine/edge (Simplified for white shelf) */}
+        {/* Book front cover */}
+        <motion.div
+          className="absolute inset-0 rounded-sm shadow-lg overflow-hidden"
+          style={{ 
+            transformStyle: 'preserve-3d',
+            transformOrigin: 'left center',
+            rotateY: coverRotation,
+          }}
+          animate={{
+            rotateY: isOpen ? -170 : 0,
+            transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] }
+          }}
+        >
+          {/* Cover image */}
+          <img
+            src={book.imageUrl}
+            alt={book.title}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          
+          {/* Inner cover highlight */}
+          <div 
+            className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-30"
+            style={{ pointerEvents: 'none' }}
+          ></div>
+        </motion.div>
+        
+        {/* Book spine */}
         <div 
-          className="absolute top-0 bottom-0 -right-[1px] w-[6px] bg-gray-200 rounded-r-sm"
+          className="absolute top-0 bottom-0 left-0 w-[6px] bg-gray-200 rounded-l-sm"
           style={{ 
             transformOrigin: 'left center',
-            transform: 'rotateY(-60deg) translateX(-2px)', // Angled edge
-            background: 'linear-gradient(to right, #e5e7eb, #f3f4f6)' 
+            transform: 'rotateY(90deg) translateX(-3px)',
+            background: `linear-gradient(to right, ${getColorFromImage(book.imageUrl)}, #f3f4f6)`,
           }}
-        ></div>
+        >
+          {/* Spine highlights */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"></div>
+        </div>
+        
         {/* Book top edge */}
         <div 
-          className="absolute left-0 right-0 -top-[1px] h-[4px] bg-gray-100 rounded-t-sm"
+          className="absolute left-0 right-0 top-0 h-[4px] bg-gray-100 rounded-t-sm"
+          style={{ 
+            transformOrigin: 'top center',
+            transform: 'rotateX(-90deg)',
+            background: 'linear-gradient(to bottom, #f9fafb, #f3f4f6)',
+          }}
+        ></div>
+        
+        {/* Book bottom edge */}
+        <div 
+          className="absolute left-0 right-0 bottom-0 h-[4px] bg-gray-200 rounded-b-sm"
           style={{ 
             transformOrigin: 'bottom center',
-            transform: 'rotateX(60deg) translateY(-1px)',
-            background: 'linear-gradient(to bottom, #f9fafb, #f3f4f6)' 
+            transform: 'rotateX(90deg)',
+            background: 'linear-gradient(to top, #e5e7eb, #f3f4f6)',
           }}
         ></div>
       </div>
 
-      {/* Book shadow (Subtler for white shelf) */}
-      <div 
-        className="absolute -bottom-1 left-1 right-1 h-4 rounded-full blur-sm opacity-20 group-hover:opacity-30 transition-opacity duration-300"
+      {/* Book shadow */}
+      <motion.div 
+        className="absolute -bottom-1 left-1 right-1 h-4 rounded-full blur-sm"
         style={{ 
           background: 'radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 70%)',
-          transform: 'translateY(2px) rotateX(70deg) scale(0.9, 0.8)' // Project shadow downwards
+          transform: 'translateY(2px) rotateX(70deg) scale(0.9, 0.8)',
+          opacity: 0.2,
         }}
-      ></div>
+        animate={{
+          opacity: isOpen ? 0.4 : 0.2,
+          scale: isOpen ? [0.9, 1.1, 0.9] : 0.9,
+          transition: { duration: 0.5 }
+        }}
+      ></motion.div>
 
-       {/* Tooltip remains similar, adjusted positioning if needed */}
-       <AnimatePresence>
+      {/* Book tooltip */}
+      <AnimatePresence>
         {isSelected && (
           <motion.div
             className="absolute bottom-full left-1/2 mb-3 p-2.5 bg-gray-800 text-white rounded-md shadow-lg w-52 z-20 pointer-events-none"
@@ -195,14 +268,23 @@ const Book = ({ book, isSelected, onSelect }: {
             transition={{ duration: 0.2 }}
           >
             <h3 className="font-semibold text-xs tracking-wide leading-tight">{book.title}</h3>
-            {/* <p className="text-xs text-gray-300 mt-1 leading-snug">{book.description}</p> */}
-             <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div> {/* Arrow */} 
-           </motion.div>
-         )}
-       </AnimatePresence>
+            <p className="text-xs text-gray-300 mt-1 leading-snug">{book.description}</p>
+            <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
+
+// Helper function to get a color from book image URL (simplified version)
+function getColorFromImage(imageUrl: string): string {
+  // This is a simplified approach - in a real app you might use a color extraction library
+  // For now, use a basic hash of the URL to generate a consistent color
+  const hash = imageUrl.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hue = hash % 360;
+  return `hsl(${hue}, 70%, 35%)`;
+}
 
 // Shelf component restyled to match the image (white, 3D perspective)
 const Shelf = ({ children }: { children: React.ReactNode }) => {
@@ -252,20 +334,19 @@ export function BookshelfSection() {
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
 
   const handleSelectBook = (id: number) => {
-    setSelectedBookId(prev => (prev === id ? null : id)); // Toggle selection
+    setSelectedBookId(prevId => prevId === id ? null : id);
   };
 
   return (
-    <Card>
-      <div className="flex justify-between items-center mb-4 md:mb-6">
-        <h2 className="text-lg md:text-xl font-semibold text-gray-900">My bookshelf</h2>
-        {/* Optional link can go here */}
-      </div>
-
-      <div className="flex flex-col space-y-24 md:space-y-28 pt-16 pb-12">
-        {booksByShelf.map((shelfBooks, index) => (
-          <Shelf key={index}>
-            {shelfBooks.map((book) => (
+    <Card className="relative overflow-hidden">
+      <div className="p-6 md:p-8">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">My Bookshelf</h2>
+        <p className="text-gray-600 mb-6">Design &amp; tech books that inspire me</p>
+        
+        <div className="space-y-4">
+          {/* First Shelf */}
+          <Shelf>
+            {booksByShelf[0].map(book => (
               <Book 
                 key={book.id} 
                 book={book} 
@@ -274,7 +355,31 @@ export function BookshelfSection() {
               />
             ))}
           </Shelf>
-        ))}
+          
+          {/* Second Shelf */}
+          <Shelf>
+            {booksByShelf[1].map(book => (
+              <Book 
+                key={book.id} 
+                book={book} 
+                isSelected={selectedBookId === book.id}
+                onSelect={handleSelectBook}
+              />
+            ))}
+          </Shelf>
+          
+          {/* Third Shelf */}
+          <Shelf>
+            {booksByShelf[2].map(book => (
+              <Book 
+                key={book.id} 
+                book={book} 
+                isSelected={selectedBookId === book.id}
+                onSelect={handleSelectBook}
+              />
+            ))}
+          </Shelf>
+        </div>
       </div>
     </Card>
   );

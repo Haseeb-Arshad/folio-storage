@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaYoutube, FaPlayCircle, FaVolumeUp, FaVolumeMute, FaExpand, FaPause, FaTimes } from 'react-icons/fa';
+import { cn } from '../utils/cn';
 
-// Videos data with actual YouTube embeds
+// Videos data with actual YouTube embeds - using reliable YouTube preview thumbnails
 const videos = [
   {
     id: 1,
@@ -10,7 +11,7 @@ const videos = [
     author: "Design Daily",
     views: "10K views",
     date: "2 days ago",
-    thumbnail: "https://images.unsplash.com/photo-1605379399642-870262d3d051?q=80&w=1812&auto=format&fit=crop&ixlib=rb-4.0.3",
+    thumbnail: "https://i.ytimg.com/vi/oOct0xszVV4/hqdefault.jpg",
     embedUrl: "https://www.youtube.com/embed/oOct0xszVV4?autoplay=1&mute=0",
     description: "Join me as I redesign my portfolio website using modern design principles and the latest web technologies."
   },
@@ -20,7 +21,7 @@ const videos = [
     author: "Design Daily",
     views: "8.5K views",
     date: "1 week ago",
-    thumbnail: "https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.0.3",
+    thumbnail: "https://i.ytimg.com/vi/nEHMNlCLfEc/hqdefault.jpg",
     embedUrl: "https://www.youtube.com/embed/nEHMNlCLfEc?autoplay=1&mute=0",
     description: "A deep dive into how I structure and maintain my design system for maximum efficiency and consistency."
   },
@@ -30,7 +31,7 @@ const videos = [
     author: "Design Daily",
     views: "15K views",
     date: "3 weeks ago",
-    thumbnail: "https://images.unsplash.com/photo-1508780709619-79562169bc64?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.0.3",
+    thumbnail: "https://i.ytimg.com/vi/bSMZgXzC9AA/hqdefault.jpg",
     embedUrl: "https://www.youtube.com/embed/bSMZgXzC9AA?autoplay=1&mute=0",
     description: "Learn how to create impressive 3D effects using Three.js and modern CSS techniques."
   }
@@ -40,6 +41,8 @@ interface VideoControlsProps {
   isPlaying: boolean;
   isMuted: boolean;
   progress: number;
+  duration: string;
+  currentTime: string;
   togglePlay: () => void;
   toggleMute: () => void;
   onProgressChange: (value: number) => void;
@@ -50,6 +53,8 @@ const VideoControls = ({
   isPlaying, 
   isMuted,
   progress, 
+  duration,
+  currentTime,
   togglePlay, 
   toggleMute,
   onProgressChange,
@@ -118,7 +123,7 @@ const VideoControls = ({
           </button>
           
           <div className="text-white text-xs">
-            4:13 / 8:47
+            {currentTime} / {duration}
           </div>
         </div>
         
@@ -140,34 +145,70 @@ export default function VideoPlayer() {
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [progress, setProgress] = useState(0.45);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState("0:00");
+  const [currentTime, setCurrentTime] = useState("0:00");
   const [showControls, setShowControls] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   
-  // Progress simulation
+  // Format time from seconds to MM:SS
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+  
+  // Update progress when video plays
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
+    const video = videoRef.current;
     
-    if (isPlaying && !isExpanded) {
-      interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 1) {
-            clearInterval(interval);
-            setIsPlaying(false);
-            return 0;
-          }
-          return prev + 0.001;
-        });
-      }, 100);
-    }
+    if (!video) return;
+    
+    const updateProgress = () => {
+      if (video.duration) {
+        setProgress(video.currentTime / video.duration);
+        setCurrentTime(formatTime(video.currentTime));
+        setDuration(formatTime(video.duration));
+      }
+    };
+    
+    video.addEventListener('timeupdate', updateProgress);
+    video.addEventListener('loadedmetadata', () => {
+      setDuration(formatTime(video.duration));
+    });
     
     return () => {
-      if (interval) clearInterval(interval);
+      video.removeEventListener('timeupdate', updateProgress);
+      video.removeEventListener('loadedmetadata', updateProgress);
     };
-  }, [isPlaying, isExpanded]);
+  }, [activeVideoIndex]);
+  
+  // Handle play/pause state changes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    if (isPlaying) {
+      video.play().catch(error => {
+        console.error('Failed to play video:', error);
+        setIsPlaying(false);
+      });
+    } else {
+      video.pause();
+    }
+  }, [isPlaying]);
+  
+  // Handle mute state changes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    video.muted = isMuted;
+  }, [isMuted]);
   
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
@@ -216,12 +257,16 @@ export default function VideoPlayer() {
   
   const handleProgressChange = (value: number) => {
     setProgress(value);
+    
+    if (videoRef.current && videoRef.current.duration) {
+      videoRef.current.currentTime = value * videoRef.current.duration;
+    }
   };
   
   const handleExpandClick = () => {
     setIsExpanded(true);
     setShowControls(true);
-    setIsPlaying(true);
+    setIsPlaying(false); // Don't autoplay - let YouTube iframe handle it
   };
   
   const handleCloseExpanded = () => {
@@ -232,11 +277,23 @@ export default function VideoPlayer() {
   const handleNextVideo = () => {
     setActiveVideoIndex((prev) => (prev === videos.length - 1 ? 0 : prev + 1));
     setProgress(0);
+    setCurrentTime("0:00");
+    
+    // Reset video if switching
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+    }
   };
   
   const handlePrevVideo = () => {
     setActiveVideoIndex((prev) => (prev === 0 ? videos.length - 1 : prev - 1));
     setProgress(0);
+    setCurrentTime("0:00");
+    
+    // Reset video if switching
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+    }
   };
 
   const activeVideo = videos[activeVideoIndex];
@@ -248,230 +305,151 @@ export default function VideoPlayer() {
           <h2 className="text-lg md:text-xl font-semibold text-gray-900">Design livestreams</h2>
           <a 
             href="https://youtube.com" 
-            target="_blank" 
+            target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs md:text-sm font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+            className="flex items-center text-red-600 font-medium text-sm hover:text-red-500 transition-colors gap-1"
           >
-            <FaYoutube className="w-4 h-4 text-red-600" />
-            My Youtube
-            <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-            </svg>
+            <FaYoutube className="w-5 h-5" />
+            <span>YouTube Channel</span>
           </a>
         </div>
         
-        {/* Enhanced 3D TV/Monitor with stand */}
-        <div className="relative flex flex-col items-center perspective">
-          {/* TV Frame */}
-          <motion.div 
-            className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl transform-gpu"
-            style={{ 
-              transformStyle: 'preserve-3d',
-              transform: 'rotateX(2deg)',
-            }}
+        {/* Video Player */}
+        <div className="mb-6 overflow-hidden">
+          <div 
             ref={videoContainerRef}
+            className={cn(
+              "relative aspect-video w-full rounded-xl overflow-hidden bg-black shadow-md",
+              isFullscreen ? "fixed inset-0 z-[9999] rounded-none" : ""
+            )}
             onMouseEnter={handleVideoContainerEnter}
             onMouseLeave={handleVideoContainerLeave}
-            whileHover={{ scale: 1.01, rotateX: 0 }}
-            transition={{ duration: 0.3 }}
           >
-            {/* TV Bezel */}
-            <div className="absolute inset-0 bg-gradient-to-b from-gray-800 to-black rounded-xl p-3 transform-gpu"
-                 style={{ transformStyle: 'preserve-3d' }}>
-              {/* Power LED */}
-              <div className="absolute bottom-2 right-2 w-1.5 h-1.5 rounded-full bg-red-500 z-50 shadow-glow-red"></div>
-              
-              {/* Camera/sensor */}
-              <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full bg-gray-900 ring-1 ring-gray-700 flex items-center justify-center">
-                <div className="w-0.5 h-0.5 rounded-full bg-black"></div>
-              </div>
-              
-              {/* TV Screen */}
-              <div className="relative w-full h-full overflow-hidden rounded-md shadow-inner bg-black">
-                {/* Video thumbnail */}
-                <img 
-                  src={activeVideo.thumbnail} 
-                  alt={activeVideo.title}
-                  className="w-full h-full object-cover opacity-80"
-                />
-                
-                {/* Screen overlay effects */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent mix-blend-overlay pointer-events-none"></div>
-                <div className="absolute top-0 w-full h-1/4 bg-gradient-to-b from-white/10 to-transparent blur-xl pointer-events-none"></div>
-                
-                {/* Scan lines effect */}
-                <div className="absolute inset-0 bg-repeat opacity-10 pointer-events-none"
-                     style={{
-                       backgroundImage: 'repeating-linear-gradient(0deg, rgba(255,255,255,0.1), rgba(255,255,255,0.1) 1px, transparent 1px, transparent 2px)',
-                       backgroundSize: '100% 2px'
-                     }}>
-                </div>
-                
-                {/* Play button overlay */}
-                <motion.div
-                  className="absolute inset-0 flex items-center justify-center z-30"
-                  initial={{ opacity: 1 }}
-                  animate={{ opacity: isPlaying ? 0 : 1 }}
-                  transition={{ duration: 0.3 }}
+            {/* Video Element */}
+            <video 
+              ref={videoRef}
+              src={`video-${activeVideoIndex + 1}.mp4`} // Will need to be replaced with actual video file paths
+              poster={activeVideo.thumbnail}
+              className="absolute inset-0 w-full h-full object-cover bg-black"
+              onEnded={() => setIsPlaying(false)}
+              playsInline
+            />
+            
+            {/* Poster/Thumbnail layer with play button */}
+            {!isPlaying && (
+              <div 
+                className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer"
+                onClick={togglePlay}
+              >
+                <motion.div 
+                  className="bg-red-600 text-white rounded-full p-4 shadow-lg"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <motion.button
-                    className="cursor-pointer p-8 rounded-full bg-red-600/30 backdrop-blur-sm"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleExpandClick}
-                    aria-label="Play video"
-                  >
-                    <FaPlayCircle className="w-14 h-14 text-white" />
-                  </motion.button>
+                  <FaPlayCircle className="w-12 h-12" />
                 </motion.div>
-                
-                {/* Video info overlay */}
-                <div className="absolute bottom-12 left-4 right-4 flex flex-col z-30">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-800 ring-2 ring-white/20 flex-shrink-0">
-                      <img 
-                        src="https://source.unsplash.com/random/100x100?profile" 
-                        alt="Channel Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <h3 className="text-white font-medium text-sm">{activeVideo.title}</h3>
-                      <p className="text-gray-300 text-xs">{activeVideo.author} • {activeVideo.views} • {activeVideo.date}</p>
-                    </div>
+              </div>
+            )}
+            
+            {/* Video Controls - only shown when hovered or controls are visible */}
+            <AnimatePresence>
+              {(showControls || !isPlaying) && (
+                <VideoControls 
+                  isPlaying={isPlaying}
+                  isMuted={isMuted}
+                  progress={progress}
+                  duration={duration}
+                  currentTime={currentTime}
+                  togglePlay={togglePlay}
+                  toggleMute={toggleMute}
+                  onProgressChange={handleProgressChange}
+                  onFullscreen={handleFullscreen}
+                />
+              )}
+            </AnimatePresence>
+            
+            {/* Video title overlay */}
+            <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+              <h3 className="text-white font-medium text-lg">{activeVideo.title}</h3>
+              <p className="text-white/80 text-sm">{activeVideo.author} • {activeVideo.views}</p>
+            </div>
+            
+            {/* Watch on YouTube / Expand button */}
+            <button
+              className="absolute bottom-20 right-4 bg-red-600 text-white text-sm font-medium px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 hover:bg-red-700 transition-colors"
+              onClick={handleExpandClick}
+            >
+              <FaYoutube className="w-4 h-4" />
+              <span>Watch on YouTube</span>
+            </button>
+          </div>
+          
+          {/* Video navigation */}
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            {videos.map((video, idx) => (
+              <div 
+                key={video.id}
+                className={cn(
+                  "relative rounded-md overflow-hidden cursor-pointer aspect-video",
+                  activeVideoIndex === idx ? "ring-2 ring-red-500" : ""
+                )}
+                onClick={() => setActiveVideoIndex(idx)}
+              >
+                <img 
+                  src={video.thumbnail} 
+                  alt={video.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                  <div className="text-white">
+                    <FaPlayCircle className="w-8 h-8" />
                   </div>
                 </div>
-                
-                {/* Video controls - visible on hover or when paused */}
-                <AnimatePresence>
-                  {showControls && (
-                    <VideoControls 
-                      isPlaying={isPlaying}
-                      isMuted={isMuted}
-                      progress={progress}
-                      togglePlay={togglePlay}
-                      toggleMute={toggleMute}
-                      onProgressChange={handleProgressChange}
-                      onFullscreen={handleFullscreen}
-                    />
-                  )}
-                </AnimatePresence>
               </div>
-            </div>
-          </motion.div>
-          
-          {/* TV Stand with enhanced 3D effect */}
-          <div className="relative mt-1 perspective transform-gpu" style={{ transformStyle: 'preserve-3d' }}>
-            {/* Stand Neck */}
-            <div className="h-14 w-4 transform-gpu" 
-                style={{ 
-                  background: 'linear-gradient(to bottom, #4a5568, #2d3748)',
-                  transformStyle: 'preserve-3d',
-                  transform: 'translateZ(0) rotateX(-2deg)',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                }}
-            ></div>
-            
-            {/* Stand Base */}
-            <div className="h-3 w-48 transform-gpu rounded-full" 
-                style={{ 
-                  background: 'linear-gradient(to bottom, #4a5568, #2d3748)',
-                  transformStyle: 'preserve-3d',
-                  transform: 'translateZ(0) translateY(-4px)',
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                }}
-            >
-              {/* Reflective surface */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/5 via-white/20 to-black/5 rounded-full"></div>
-            </div>
-            
-            {/* Stand Shadow */}
-            <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-40 h-4 rounded-full"
-                style={{ 
-                  background: 'radial-gradient(ellipse, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 70%)',
-                  filter: 'blur(3px)'
-                }}
-            ></div>
-          </div>
-          
-          {/* Video Selection Navigation */}
-          <div className="absolute -bottom-10 left-0 right-0 flex justify-center space-x-2 z-10">
-            {videos.map((video, index) => (
-              <button 
-                key={video.id}
-                className={`w-2 h-2 rounded-full transition-all ${index === activeVideoIndex ? 'bg-red-600 w-4' : 'bg-gray-400'}`}
-                onClick={() => {
-                  setActiveVideoIndex(index);
-                  setProgress(0);
-                }}
-                aria-label={`Select video ${index + 1}`}
-              ></button>
             ))}
           </div>
-          
-          {/* Navigation Arrows */}
-          <button 
-            className="absolute top-1/2 -left-6 transform -translate-y-1/2 bg-white/80 p-2 rounded-full text-gray-800 hover:bg-white shadow-md z-10"
-            onClick={handlePrevVideo}
-            aria-label="Previous video"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          
-          <button 
-            className="absolute top-1/2 -right-6 transform -translate-y-1/2 bg-white/80 p-2 rounded-full text-gray-800 hover:bg-white shadow-md z-10"
-            onClick={handleNextVideo}
-            aria-label="Next video"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+        </div>
+        
+        {/* Video info */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="font-medium text-gray-900 mb-1">{activeVideo.title}</h3>
+          <div className="flex items-center text-gray-600 text-sm mb-2">
+            <span>{activeVideo.author}</span>
+            <span className="mx-2">•</span>
+            <span>{activeVideo.views}</span>
+            <span className="mx-2">•</span>
+            <span>{activeVideo.date}</span>
+          </div>
+          <p className="text-gray-700 text-sm">{activeVideo.description}</p>
         </div>
       </div>
-
-      {/* Fullscreen YouTube video modal */}
+      
+      {/* YouTube Expanded Modal */}
       <AnimatePresence>
         {isExpanded && (
-          <motion.div 
-            className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+          <motion.div
+            className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <button
-              className="absolute top-4 right-4 p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition-colors"
-              onClick={handleCloseExpanded}
-              aria-label="Close video"
-            >
-              <FaTimes className="w-5 h-5" />
-            </button>
-            
-            {/* Video info */}
-            <div className="absolute top-4 left-4 max-w-xs">
-              <h2 className="text-white font-medium text-lg">{activeVideo.title}</h2>
-              <p className="text-gray-300 text-sm">{activeVideo.author}</p>
-              <p className="text-gray-400 text-xs mt-1">{activeVideo.views} • {activeVideo.date}</p>
-            </div>
-            
-            {/* YouTube iframe */}
-            <div className="relative w-full max-w-5xl aspect-video bg-black rounded-lg overflow-hidden shadow-2xl">
+            <div className="relative w-full max-w-5xl aspect-video rounded-lg overflow-hidden shadow-2xl">
               <iframe
                 ref={iframeRef}
-                className="w-full h-full"
-                src={activeVideo.embedUrl}
-                title={activeVideo.title}
+                src={`${activeVideo.embedUrl}&autoplay=1&mute=${isMuted ? 1 : 0}`}
+                className="absolute inset-0 w-full h-full"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
+                title={activeVideo.title}
               ></iframe>
-            </div>
-            
-            {/* Video description */}
-            <div className="absolute bottom-4 left-4 max-w-md bg-black/50 backdrop-blur-sm p-3 rounded-lg">
-              <p className="text-gray-200 text-sm">{activeVideo.description}</p>
+              
+              <button
+                className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors z-10"
+                onClick={handleCloseExpanded}
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
             </div>
           </motion.div>
         )}

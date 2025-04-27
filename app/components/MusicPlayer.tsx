@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSpotify, FaPlay, FaPause, FaForward, FaBackward, FaVolumeUp } from 'react-icons/fa';
+import { FaSpotify, FaPlay, FaPause, FaForward, FaBackward, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
+import { cn } from '../utils/cn';
 
 interface AlbumCoverProps {
   coverImage: string;
@@ -8,13 +9,17 @@ interface AlbumCoverProps {
   artist: string;
   index: number;
   isActive: boolean;
+  isPlaying: boolean;
   onClick: () => void;
 }
 
-const AlbumCover = ({ coverImage, title, artist, index, isActive, onClick }: AlbumCoverProps) => {
+const AlbumCover = ({ coverImage, title, artist, index, isActive, isPlaying, onClick }: AlbumCoverProps) => {
   return (
     <motion.div 
-      className={`relative cursor-pointer ${isActive ? 'z-20' : ''}`}
+      className={cn(
+        "relative cursor-pointer",
+        isActive ? "z-20" : ""
+      )}
       whileHover={{ 
         y: -8,
         scale: 1.05,
@@ -24,12 +29,12 @@ const AlbumCover = ({ coverImage, title, artist, index, isActive, onClick }: Alb
       animate={{
         scale: isActive ? 1.1 : 1,
         y: isActive ? -10 : 0,
-        rotateZ: isActive ? 0 : (index % 2 === 0 ? -3 : 3)
-      }}
-      transition={{ 
-        duration: 0.3,
-        type: "spring",
-        stiffness: 300
+        rotateZ: isActive ? 0 : (index % 2 === 0 ? -3 : 3),
+        transition: { 
+          duration: 0.3,
+          type: "spring",
+          stiffness: 300
+        }
       }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
@@ -40,7 +45,18 @@ const AlbumCover = ({ coverImage, title, artist, index, isActive, onClick }: Alb
       title={`${title} by ${artist}`}
     >
       <motion.div 
-        className={`w-20 h-20 rounded-md overflow-hidden shadow-lg ${isActive ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}
+        className={cn(
+          "w-20 h-20 rounded-md overflow-hidden shadow-lg",
+          isActive ? "ring-2 ring-green-500 ring-offset-2" : ""
+        )}
+        animate={{
+          rotateY: isActive && isPlaying ? [0, 5, 0, -5, 0] : 0,
+          transition: {
+            duration: 2,
+            repeat: isActive && isPlaying ? Infinity : 0,
+            repeatType: "reverse"
+          }
+        }}
       >
         <img 
           src={coverImage} 
@@ -50,9 +66,18 @@ const AlbumCover = ({ coverImage, title, artist, index, isActive, onClick }: Alb
       </motion.div>
       
       {/* Album reflection/shadow for 3D effect */}
-      <div 
+      <motion.div 
         className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-4/5 h-4 bg-black/20 filter blur-sm rounded-full"
-      ></div>
+        animate={{
+          scaleX: isActive && isPlaying ? [1, 1.1, 1, 0.9, 1] : 1,
+          opacity: isActive ? 0.6 : 0.2,
+          transition: {
+            duration: 2,
+            repeat: isActive && isPlaying ? Infinity : 0,
+            repeatType: "reverse"
+          }
+        }}
+      ></motion.div>
 
       {/* Album info - only shown when active */}
       <AnimatePresence>
@@ -73,7 +98,7 @@ const AlbumCover = ({ coverImage, title, artist, index, isActive, onClick }: Alb
 };
 
 // Vinyl record animation
-const VinylRecord = ({ isPlaying }: { isPlaying: boolean }) => {
+const VinylRecord = ({ isPlaying, coverImage }: { isPlaying: boolean; coverImage: string }) => {
   return (
     <motion.div 
       className="relative w-36 h-36"
@@ -107,12 +132,98 @@ const VinylRecord = ({ isPlaying }: { isPlaying: boolean }) => {
       
       {/* Center label */}
       <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 
-                   w-16 h-16 rounded-full bg-gradient-to-br from-red-600 to-red-800 shadow-inner">
+                   w-16 h-16 rounded-full overflow-hidden shadow-inner">
+        {/* Mini album art in center */}
+        <img 
+          src={coverImage} 
+          alt="Album cover" 
+          className="w-full h-full object-cover opacity-80"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/20 to-black/60"></div>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-white/70 text-[8px] font-bold">SPOTIFY</span>
+          <span className="text-white/90 text-[8px] font-bold">SPOTIFY</span>
         </div>
       </div>
     </motion.div>
+  );
+};
+
+// Progress Bar with waveform visualization
+const AudioProgressBar = ({ 
+  progress, 
+  duration, 
+  currentTime,
+  isPlaying,
+  onSeek
+}: { 
+  progress: number; 
+  duration: string;
+  currentTime: string;
+  isPlaying: boolean;
+  onSeek: (value: number) => void;
+}) => {
+  const waveformBars = 30; // Number of bars in waveform visualization
+  
+  return (
+    <div className="w-full space-y-1">
+      <div className="relative h-8 w-full group">
+        {/* Waveform visualization */}
+        <div className="absolute inset-x-0 bottom-0 h-6 flex items-end justify-between px-0.5 space-x-0.5">
+          {Array.from({ length: waveformBars }).map((_, i) => {
+            // Generate a pseudo-random height based on position and time
+            const randomHeight = 20 + Math.sin(i * 0.5 + Date.now() * 0.001) * 15;
+            const height = isPlaying ? `${randomHeight}%` : '20%';
+            
+            // Determine if this bar is before or after the current playback position
+            const isPlayed = (i / waveformBars) < progress;
+            
+            return (
+              <motion.div
+                key={i}
+                className={`w-full rounded-t-sm ${isPlayed ? 'bg-green-500' : 'bg-gray-300'}`}
+                initial={{ height: '20%' }}
+                animate={{ height }}
+                transition={{ 
+                  duration: isPlaying ? 0.3 : 0.1, 
+                  ease: "easeInOut" 
+                }}
+              ></motion.div>
+            );
+          })}
+        </div>
+        
+        {/* Progress tracker */}
+        <div 
+          className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-r from-green-500/20 to-green-500/0 rounded-md"
+          style={{ width: `${progress * 100}%` }}
+        ></div>
+        
+        {/* Thumb */}
+        <motion.div 
+          className="absolute bottom-0 h-6 w-1 bg-green-500 rounded-full transform translate-x(-50%) opacity-0 group-hover:opacity-100"
+          style={{ left: `${progress * 100}%` }}
+          transition={{ duration: 0.1 }}
+        ></motion.div>
+        
+        {/* Interactive slider */}
+        <input 
+          type="range" 
+          min="0" 
+          max="1" 
+          step="0.001"
+          value={progress}
+          onChange={(e) => onSeek(parseFloat(e.target.value))}
+          className="absolute inset-0 w-full opacity-0 cursor-pointer z-10"
+          aria-label="Audio playback position"
+        />
+      </div>
+      
+      {/* Time display */}
+      <div className="flex justify-between text-xs text-gray-500">
+        <span>{currentTime}</span>
+        <span>{duration}</span>
+      </div>
+    </div>
   );
 };
 
@@ -123,6 +234,8 @@ const AudioControls = ({
   onPrev, 
   onNext, 
   volume, 
+  isMuted,
+  onMuteToggle,
   onVolumeChange 
 }: { 
   isPlaying: boolean; 
@@ -130,45 +243,59 @@ const AudioControls = ({
   onPrev: () => void; 
   onNext: () => void; 
   volume: number;
+  isMuted: boolean;
+  onMuteToggle: () => void;
   onVolumeChange: (value: number) => void;
 }) => {
   return (
-    <div className="flex flex-col items-center space-y-3">
-      <div className="flex items-center space-x-4">
-        <button 
-          className="p-2 text-gray-800 hover:text-green-600 focus:outline-none"
-          onClick={onPrev}
-          aria-label="Previous track"
-        >
-          <FaBackward className="w-4 h-4" />
-        </button>
-        <button 
-          className="p-3 bg-green-500 rounded-full text-white hover:bg-green-600 focus:outline-none"
-          onClick={onPlayPause}
-          aria-label={isPlaying ? "Pause" : "Play"}
-        >
-          {isPlaying ? <FaPause className="w-5 h-5" /> : <FaPlay className="w-5 h-5 ml-0.5" />}
-        </button>
-        <button 
-          className="p-2 text-gray-800 hover:text-green-600 focus:outline-none"
-          onClick={onNext}
-          aria-label="Next track"
-        >
-          <FaForward className="w-4 h-4" />
-        </button>
-      </div>
+    <div className="flex items-center space-x-4 mb-2">
+      <button 
+        className="p-2 text-gray-800 hover:text-green-600 focus:outline-none"
+        onClick={onPrev}
+        aria-label="Previous track"
+      >
+        <FaBackward className="w-4 h-4" />
+      </button>
       
-      <div className="flex items-center space-x-2 w-full">
-        <FaVolumeUp className="w-3 h-3 text-gray-600" />
+      <motion.button 
+        className="p-3 bg-green-500 rounded-full text-white hover:bg-green-600 focus:outline-none"
+        onClick={onPlayPause}
+        aria-label={isPlaying ? "Pause" : "Play"}
+        whileTap={{ scale: 0.9 }}
+        whileHover={{ scale: 1.1 }}
+      >
+        {isPlaying ? <FaPause className="w-5 h-5" /> : <FaPlay className="w-5 h-5 ml-0.5" />}
+      </motion.button>
+      
+      <button 
+        className="p-2 text-gray-800 hover:text-green-600 focus:outline-none"
+        onClick={onNext}
+        aria-label="Next track"
+      >
+        <FaForward className="w-4 h-4" />
+      </button>
+      
+      <div className="flex items-center space-x-2 ml-2">
+        <button
+          className="text-gray-600 hover:text-green-600 focus:outline-none"
+          onClick={onMuteToggle}
+          aria-label={isMuted ? "Unmute" : "Mute"}
+        >
+          {isMuted ? <FaVolumeMute className="w-4 h-4" /> : <FaVolumeUp className="w-4 h-4" />}
+        </button>
+        
         <input 
           type="range" 
           min="0" 
           max="1" 
           step="0.01"
-          value={volume}
+          value={isMuted ? 0 : volume}
           onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-          className="w-full h-1 bg-gray-300 rounded-full appearance-none cursor-pointer"
+          className="w-20 h-1 bg-gray-300 rounded-full appearance-none cursor-pointer"
           aria-label="Volume control"
+          style={{
+            background: `linear-gradient(to right, #10B981 0%, #10B981 ${isMuted ? 0 : volume * 100}%, #D1D5DB ${isMuted ? 0 : volume * 100}%, #D1D5DB 100%)`
+          }}
         />
       </div>
     </div>
@@ -179,7 +306,18 @@ export default function MusicPlayer() {
   const [activeAlbumIndex, setActiveAlbumIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
+  const [isMuted, setIsMuted] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState("0:00");
+  const [currentTime, setCurrentTime] = useState("0:00");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Format time from seconds to MM:SS
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+  };
   
   const albums = [
     { 
@@ -219,7 +357,9 @@ export default function MusicPlayer() {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = albums[activeAlbumIndex].previewUrl;
-      audioRef.current.volume = volume;
+      audioRef.current.volume = isMuted ? 0 : volume;
+      setProgress(0);
+      setCurrentTime("0:00");
       
       if (isPlaying) {
         audioRef.current.play().catch(error => {
@@ -233,9 +373,42 @@ export default function MusicPlayer() {
   // Update volume when it changes
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = volume;
+      audioRef.current.volume = isMuted ? 0 : volume;
     }
-  }, [volume]);
+  }, [volume, isMuted]);
+  
+  // Track audio progress
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const updateProgress = () => {
+      if (audio.duration) {
+        setProgress(audio.currentTime / audio.duration);
+        setCurrentTime(formatTime(audio.currentTime));
+        setDuration(formatTime(audio.duration));
+      }
+    };
+    
+    const handleLoadedMetadata = () => {
+      setDuration(formatTime(audio.duration));
+    };
+    
+    const handleEnded = () => {
+      setIsPlaying(false);
+      handleNext();
+    };
+    
+    audio.addEventListener('timeupdate', updateProgress);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+    
+    return () => {
+      audio.removeEventListener('timeupdate', updateProgress);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
   
   const handlePlayPause = () => {
     if (audioRef.current) {
@@ -251,131 +424,129 @@ export default function MusicPlayer() {
   };
   
   const handlePrevious = () => {
-    setActiveAlbumIndex(prev => (prev === 0 ? albums.length - 1 : prev - 1));
+    setActiveAlbumIndex((prevIndex) => (prevIndex === 0 ? albums.length - 1 : prevIndex - 1));
   };
   
   const handleNext = () => {
-    setActiveAlbumIndex(prev => (prev === albums.length - 1 ? 0 : prev + 1));
+    setActiveAlbumIndex((prevIndex) => (prevIndex === albums.length - 1 ? 0 : prevIndex + 1));
   };
   
-  // Auto-rotate albums - uncomment to enable
-  // useEffect(() => {
-  //   if (isPlaying) {
-  //     const interval = setInterval(() => {
-  //       handleNext();
-  //     }, 10000);
-  //     return () => clearInterval(interval);
-  //   }
-  // }, [isPlaying]);
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    if (newVolume > 0 && isMuted) {
+      setIsMuted(false);
+    }
+  };
+  
+  const handleMuteToggle = () => {
+    setIsMuted(!isMuted);
+  };
+  
+  const handleSeek = (value: number) => {
+    if (audioRef.current && audioRef.current.duration) {
+      audioRef.current.currentTime = value * audioRef.current.duration;
+      setProgress(value);
+    }
+  };
   
   return (
-    <div className="bg-white rounded-3xl p-8 shadow-sm">
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-xl font-bold">Listening to...</h2>
+    <div className="bg-white rounded-xl shadow-md overflow-hidden p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg md:text-xl font-semibold text-gray-900">Now Playing</h2>
         <a 
-          href="https://spotify.com" 
+          href="https://open.spotify.com" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="flex items-center text-sm text-gray-500 hover:text-gray-700"
+          className="flex items-center gap-1.5 text-green-600 hover:text-green-700"
         >
-          <FaSpotify className="w-5 h-5 text-green-500 mr-2" />
-          <span className="mr-1">My Spotify</span>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-          </svg>
+          <FaSpotify className="w-4 h-4" />
+          <span className="text-sm font-medium">Spotify</span>
         </a>
       </div>
       
-      <div className="flex items-center justify-between gap-8">
-        {/* Left side - Record animation */}
-        <div className="relative flex-shrink-0">
+      <div className="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-8">
+        {/* Left side - Vinyl player with record */}
+        <div className="relative">
           <motion.div
+            className="relative w-44 h-44 rounded-full bg-gray-100 shadow-inner flex items-center justify-center"
             animate={{
-              x: isPlaying ? [0, -10, 0] : 0
-            }}
-            transition={{
-              duration: 0.5,
-              repeat: isPlaying ? Infinity : 0,
-              repeatDelay: 5
+              rotate: isPlaying ? [-1, 1, -1] : 0,
+              transition: {
+                duration: 4,
+                repeat: isPlaying ? Infinity : 0,
+                repeatType: "reverse",
+                ease: "easeInOut"
+              }
             }}
           >
-            <VinylRecord isPlaying={isPlaying} />
+            <VinylRecord isPlaying={isPlaying} coverImage={albums[activeAlbumIndex].coverImage} />
+          </motion.div>
+          
+          {/* Turntable arm */}
+          <motion.div
+            className="absolute top-12 -right-8 w-20 h-4"
+            style={{ transformOrigin: 'left center' }}
+            animate={{
+              rotateZ: isPlaying ? 25 : 0,
+              transition: { duration: 0.5 }
+            }}
+          >
+            <div className="w-full h-1 bg-gradient-to-r from-gray-400 to-gray-300 rounded-full"></div>
+            <div className="absolute right-0 -top-1 w-4 h-4 rounded-full bg-gray-300 border border-gray-400"></div>
           </motion.div>
         </div>
         
-        {/* Right side - Album covers & controls */}
-        <div className="flex-1 flex flex-col items-center">
-          {/* Album covers carousel */}
-          <div className="relative h-32 w-full mb-6 flex items-center justify-center">
-            {albums.map((album, index) => {
-              // Calculate position for a circular arrangement
-              const isActive = index === activeAlbumIndex;
-              const position = index - activeAlbumIndex;
-              const absPosition = Math.abs(position);
-              const zIndex = 10 - absPosition;
-              
-              // Determine visual position
-              let xPos = 0;
-              
-              if (position !== 0) {
-                xPos = position * 40;
-                
-                // Pull albums at the edges more to the sides 
-                if (absPosition > 1) {
-                  xPos = position * 60;
-                }
-              }
-              
-              return (
-                <motion.div
+        {/* Right side - Album covers and controls */}
+        <div className="flex-1 w-full flex flex-col space-y-4">
+          {/* Album display */}
+          <div className="relative py-3">
+            <div className="flex justify-center items-end space-x-4 h-24">
+              {albums.map((album, index) => (
+                <AlbumCover
                   key={index}
-                  className="absolute"
-                  initial={false}
-                  animate={{
-                    x: xPos,
-                    opacity: absPosition <= 2 ? 1 : 0,
-                    scale: 1 - absPosition * 0.15,
-                  }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  style={{ zIndex }}
-                >
-                  <AlbumCover
-                    coverImage={album.coverImage}
-                    title={album.title}
-                    artist={album.artist}
-                    index={index}
-                    isActive={isActive}
-                    onClick={() => setActiveAlbumIndex(index)}
-                  />
-                </motion.div>
-              );
-            })}
+                  coverImage={album.coverImage}
+                  title={album.title}
+                  artist={album.artist}
+                  index={index}
+                  isActive={index === activeAlbumIndex}
+                  isPlaying={isPlaying && index === activeAlbumIndex}
+                  onClick={() => setActiveAlbumIndex(index)}
+                />
+              ))}
+            </div>
           </div>
           
-          {/* Player controls */}
-          <div className="w-full max-w-xs">
-            <AudioControls 
-              isPlaying={isPlaying}
-              onPlayPause={handlePlayPause}
-              onPrev={handlePrevious}
-              onNext={handleNext}
-              volume={volume}
-              onVolumeChange={setVolume}
-            />
+          {/* Now Playing Info */}
+          <div className="text-center">
+            <h3 className="font-medium text-gray-900">{albums[activeAlbumIndex].title}</h3>
+            <p className="text-sm text-gray-600">{albums[activeAlbumIndex].artist}</p>
           </div>
+          
+          {/* Audio Progress */}
+          <AudioProgressBar 
+            progress={progress} 
+            duration={duration}
+            currentTime={currentTime}
+            isPlaying={isPlaying}
+            onSeek={handleSeek}
+          />
+          
+          {/* Controls */}
+          <AudioControls
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onPrev={handlePrevious}
+            onNext={handleNext}
+            volume={volume}
+            isMuted={isMuted}
+            onMuteToggle={handleMuteToggle}
+            onVolumeChange={handleVolumeChange}
+          />
         </div>
       </div>
       
-      {/* Hidden audio element for Spotify preview */}
-      <audio 
-        ref={audioRef}
-        src={albums[activeAlbumIndex].previewUrl}
-        preload="none"
-        onEnded={() => {
-          handleNext();
-          setIsPlaying(true);
-        }}
-      />
+      {/* Hidden audio element */}
+      <audio ref={audioRef} preload="metadata" />
     </div>
   );
 } 

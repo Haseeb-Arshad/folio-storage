@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../utils/cn';
 
 interface FolderCardProps {
   title: string;
@@ -10,6 +11,7 @@ interface FolderCardProps {
 
 export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = [] }: FolderCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
 
   // Use only the provided images, maybe more are loaded in modal?
@@ -40,20 +42,33 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
 
   return (
     <>
-      <div className="flex flex-col items-center group" onClick={handleFolderClick}>
+      <div 
+        className="flex flex-col items-center group" 
+        onClick={handleFolderClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         {/* Perspective container */}
         <div className="relative w-full aspect-[4/3] cursor-pointer perspective">
           {/* Folder Back */}
           <motion.div 
             className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg shadow-md"
             style={{ transformStyle: "preserve-3d" }}
-            whileHover={{ 
-              y: -5,
-              rotateX: 3,
-              rotateY: -3,
+            animate={{ 
+              y: isHovered ? -5 : 0,
+              rotateX: isHovered ? 3 : 0,
+              rotateY: isHovered ? -3 : 0,
               transition: { duration: 0.2, ease: "easeOut" }
             }}
           >
+            {/* Folder cut-out shape */}
+            <div 
+              className="absolute top-[20px] left-[20px] w-[120px] h-[60px] bg-gradient-to-br from-gray-200 to-gray-300 rounded-t-md"
+              style={{ 
+                clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
+                transform: "translateZ(1px)"
+              }}
+            ></div>
           </motion.div>
 
           {/* Photos Peeking Out */}
@@ -70,23 +85,18 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
                   transformOrigin: 'bottom center',
                   transformStyle: 'preserve-3d',
                 }}
-                initial={{ 
-                  rotate: index === 0 ? -8 : index === 1 ? 2 : 10, 
-                  y: 5 ,
-                  translateZ: `${(2 - index) * 4}px`, // Stack them slightly
-                }}
-                animate={{
-                  rotate: index === 0 ? -8 : index === 1 ? 2 : 10, 
-                  y: 0,
+                animate={{ 
+                  rotate: index === 0 ? (isHovered ? -12 : -8) : index === 1 ? (isHovered ? 4 : 2) : (isHovered ? 15 : 10), 
+                  y: isHovered ? -8 - (index * 2) : 0,
+                  translateZ: isHovered ? `${(2 - index) * 6 + 10}px` : `${(2 - index) * 4}px`, // Lift up photos when folder hovered
+                  transition: { type: 'spring', stiffness: 300, damping: 15 }
                 }}
                 whileHover={{ 
-                  y: -4, 
-                  rotate: index === 0 ? -10 : index === 1 ? 0 : 12,
                   scale: 1.05,
-                  translateZ: `${(2 - index) * 4 + 5}px`,
+                  y: -12 - (index * 3),
+                  translateZ: `${(2 - index) * 8 + 15}px`,
                   transition: { duration: 0.15 }
                 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 15 }}
               >
                 <img src={url} alt={`preview ${index}`} className="w-full h-full object-cover rounded-sm" />
               </motion.div>
@@ -95,60 +105,94 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
 
           {/* Folder Front */}
           <motion.div 
-            className="absolute bottom-0 left-0 right-0 h-[85%] bg-white/80 backdrop-blur-sm rounded-b-lg rounded-t-md shadow-inner-light overflow-hidden"
+            className={cn(
+              "absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm rounded-b-lg rounded-t-md shadow-inner-light overflow-hidden",
+              "transition-all duration-300 ease-in-out"
+            )}
             style={{ 
               transformStyle: "preserve-3d", 
-              transformOrigin: 'bottom center', 
+              transformOrigin: 'bottom center',
+              height: isHovered ? '70%' : '85%', // Shrink folder front when hovered to show envelope opening effect
               transform: 'translateZ(20px)' // Bring front forward
             }}
-             whileHover={{ 
-              y: -5, // Lift slightly less than back for parallax
-              rotateX: 2,
-              rotateY: -2,
-              transition: { duration: 0.2, ease: "easeOut" }
+            animate={{ 
+              y: isHovered ? -15 : 0, // Lift more significantly when hovered
+              rotateX: isHovered ? 25 : 0, // Open like envelope flap
+              transition: { duration: 0.3, ease: "easeOut" }
             }}
           >
             {/* Subtle gradient/shine */}
-             <div className="absolute inset-0 bg-gradient-to-t from-gray-50/50 to-transparent opacity-50"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-50/50 to-transparent opacity-50"></div>
              
-             {/* Stickers */}
-             {stickerUrls[0] && (
-                 <motion.img 
-                    src={stickerUrls[0]} 
-                    alt="sticker 1" 
-                    className="absolute w-8 h-8 md:w-10 md:h-10 z-10"
-                    style={{
-                      bottom: '15%',
-                      left: '10%',
-                      transform: 'rotate(-10deg) translateZ(5px)' // Tilt and lift sticker
-                    }}
-                    whileHover={{ rotate: -15, scale: 1.1, y: -2 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-                  />
-             )}
-             {stickerUrls[1] && (
-                <motion.img 
-                  src={stickerUrls[1]} 
-                  alt="sticker 2" 
-                  className="absolute w-8 h-8 md:w-10 md:h-10 z-10"
-                  style={{
-                    bottom: '12%',
-                    right: '10%',
-                    transform: 'rotate(8deg) translateZ(5px)' // Tilt and lift sticker
-                  }}
-                  whileHover={{ rotate: 15, scale: 1.1, y: -2 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-                />
-             )}
-
+            {/* Embossed lines near bottom (as per design spec) */}
+            <div className="absolute bottom-[30px] left-[15%] right-[15%] h-[1px] bg-white/25"></div>
+            <div className="absolute bottom-[29px] left-[15%] right-[15%] h-[1px] bg-black/10"></div>
+            
+            {/* Front sheen highlight (as per design spec) */}
+            <div 
+              className="absolute top-[40%] left-[50%] w-[500px] h-[160px] rounded-full"
+              style={{
+                background: 'radial-gradient(ellipse, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%)',
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none'
+              }}
+            ></div>
+             
+            {/* Stickers */}
+            {stickerUrls[0] && (
+              <motion.img 
+                src={stickerUrls[0]} 
+                alt="sticker 1" 
+                className="absolute w-8 h-8 md:w-10 md:h-10 z-10"
+                style={{
+                  bottom: '15%',
+                  left: '10%',
+                  transform: 'rotate(-10deg) translateZ(5px)' // Tilt and lift sticker
+                }}
+                whileHover={{ rotate: -15, scale: 1.1, y: -2 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+              />
+            )}
+            {stickerUrls[1] && (
+              <motion.img 
+                src={stickerUrls[1]} 
+                alt="sticker 2" 
+                className="absolute w-8 h-8 md:w-10 md:h-10 z-10"
+                style={{
+                  bottom: '12%',
+                  right: '10%',
+                  transform: 'rotate(8deg) translateZ(5px)' // Tilt and lift sticker
+                }}
+                whileHover={{ rotate: 15, scale: 1.1, y: -2 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+              />
+            )}
           </motion.div>
           
-           {/* Folder Tab (Visual Only) */}
-           <div 
-              className="absolute top-[-6px] left-[15px] w-[35%] h-[18px] bg-white/70 backdrop-blur-sm rounded-t-md shadow-sm"
-              style={{ transform: 'skewX(-20deg) translateZ(10px)'}} // Skewed tab appearance
-            ></div>
+          {/* Folder Tab (Visual Only) */}
+          <motion.div 
+            className="absolute top-0 left-[15px] w-[35%] h-[18px] bg-white/70 backdrop-blur-sm rounded-t-md shadow-sm"
+            style={{ 
+              transformOrigin: 'bottom left',
+              transform: 'translateZ(10px)'
+            }}
+            animate={{
+              skewX: isHovered ? '-15deg' : '-20deg',
+              y: isHovered ? -2 : 0,
+              transition: { duration: 0.2 }
+            }}
+          ></motion.div>
 
+          {/* Light noise texture overlay for realism */}
+          <div 
+            className="absolute inset-0 rounded-lg pointer-events-none z-20"
+            style={{ 
+              backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAFZSURBVGhD7ZixSgNBFEXXIIKFhYWFjYKFhYWFhYWFhYVgYWFhYWFhYWFhYWFhYWEhiFjYiYWFhYVYWFj4A/n/E3wDy7qwUXAGzoXhwUs4CUlmsi0qiqIoiqIoiqKYG9p2edJ0O/tN2/VHbbcTUjYL2/hpRJCvTJCvTJCvTJCvTJCvTJCvTJCvTJAvGjtBwpcJ8pUJ8pUJ8pUJ8pUJ8pUJ8pUJ8kVjJ0j4MkG+MkG+MkG+MkG+MkG+MkG+MkG+aOwECV8myFcmyFcmyFcmyFcmyFcmyFcmyBeNsIQvE+QrE+QrE+QrE+QrE+QrE+QrE+SLRljClwnyP8dv9yZJ2Wx8lZdteT1Kq0e9n83xdX2e2nv1AXlFvvPP4y0kJbOwXfkzPw433VP3nCT8L7bxeXgdv59/cL3k+efzfn5WPMfR6GAwPkztKIqiKIqiKIpiLmi7P+S9Uk2PD3hyAAAAAElFTkSuQmCC")',
+              backgroundSize: '10px',
+              opacity: 0.02,
+              mixBlendMode: 'overlay'
+            }}
+          ></div>
         </div>
 
         {/* Title and Photo Count */}
