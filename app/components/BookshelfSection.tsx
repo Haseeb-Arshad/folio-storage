@@ -1,331 +1,231 @@
 import { Card } from './Card';
-import { useState, useRef } from 'react';
-import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 
-// Book data to match the image exactly
+// Updated book data with real image URLs and dimensions to match the reference
 const books = [
-  // Shelf 1 - Matches the image exactly
-  { 
-    id: 1, 
-    title: 'The Runners', 
-    imageUrl: 'https://m.media-amazon.com/images/I/81fdQIY6ykL._AC_UF1000,1000_QL80_.jpg',
-    description: 'A comprehensive guide to running techniques and training methods.'
+  {
+    id: 1,
+    title: 'The Making of Prince of Persia',
+    author: 'Jordan Mechner',
+    imageUrl: 'https://m.media-amazon.com/images/I/81j5m9XUvjL._AC_UF1000,1000_QL80_.jpg',
+    description: 'Journals from the creator of Prince of Persia.',
+    readStatus: 'Read',
+    notes: 'A fascinating look into game development.',
+    width: '70px', 
+    height: '100px'
   },
-  { 
-    id: 2, 
-    title: 'Braun Design', 
-    imageUrl: 'https://cdn.shopify.com/s/files/1/0062/7489/0343/products/clock1_1800x1800.jpg?v=1612888293',
-    description: 'A celebration of Braun\'s influential industrial design philosophy.'
+  {
+    id: 2,
+    title: 'Braun: Less and More',
+    author: 'Various',
+    imageUrl: 'https://www.normann-copenhagen.com/cdn/shop/products/braun-design-book-1_1600x.jpg?v=1616073777',
+    description: 'The world of Braun design.',
+    readStatus: 'Currently Reading',
+    width: '65px', 
+    height: '100px'
   },
-  { 
-    id: 3, 
-    title: 'Leica Manual', 
-    imageUrl: 'https://th.bing.com/th/id/OIP.1EH-p_jG2G7GAyLvXhq3SQHaLH?rs=1&pid=ImgDetMain',
-    description: 'The definitive guide to Leica cameras and photography techniques.'
+  {
+    id: 3,
+    title: 'Leica M: Advanced Photo School',
+    author: 'Gunter Osterloh',
+    imageUrl: 'https://www.leicastoremiami.com/cdn/shop/products/9783667121059_LEICA_M_ADVANCED_PHOTO_SCHOOL_EN_1_1_1024x1024.jpg?v=1642008861',
+    description: 'Mastering the Leica M system.',
+    readStatus: 'Read',
+    width: '60px', 
+    height: '100px'
   },
-  { 
-    id: 4, 
-    title: 'Dieter Rams', 
-    imageUrl: 'https://th.bing.com/th/id/OIP.Ghu-PAw_2g9MqfuYVwGVgwHaKW?rs=1&pid=ImgDetMain',
-    description: 'A retrospective of Dieter Rams\' influential design work.'
+  {
+    id: 4,
+    title: 'Dieter Rams: As Little Design as Possible',
+    author: 'Sophie Lovell',
+    imageUrl: 'https://www.phaidon.com/images/custom/9780714849186_000000_S_001_A.jpg', // Example
+    description: 'An in-depth look at the work and philosophy of Dieter Rams.',
+    readStatus: 'Read',
+    notes: 'Iconic. Less, but better.',
+    width: '72px', 
+    height: '108px'
   },
-  { 
-    id: 5, 
-    title: 'Steve Jobs', 
-    imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/411aTMpWCdL._SX316_BO1,204,203,200_.jpg',
-    description: 'The authorized biography of Apple\'s innovative co-founder.'
+  {
+    id: 5,
+    title: 'Steve Jobs',
+    author: 'Walter Isaacson',
+    imageUrl: 'https://buybookbook.com/cdn/shop/files/SteveJobs-ABiography.jpg?v=1734703509', // Example
+    description: 'The authorized biography of Apple co-founder Steve Jobs.',
+    readStatus: 'Read',
+    dateRead: 'January 2023',
+    notes: 'A truly inspirational journey of innovation and focus.',
+    width: '70px', 
+    height: '105px'
   },
-  
-  // Shelf 2 - Matches the image exactly
-  { 
-    id: 6, 
-    title: 'Thinking with Type', 
-    imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/41iWRGjI-cL._SX398_BO1,204,203,200_.jpg',
-    description: 'A critical guide for designers, writers, editors, and students.'
+  // Shelf 2 - Add 5 more books with similar structure
+  {
+    id: 6,
+    title: 'Universal Principles of Design',
+    author: 'William Lidwell, Kritina Holden, Jill Butler',
+    imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/71j1U2YOF9L.jpg', // Example
+    description: '125 Ways to Enhance Usability, Influence Perception, Increase Appeal, Make Better Design Decisions, and Teach through Design.',
+    readStatus: 'Read',
+    dateRead: 'March 2023',
+    width: '70px', 
+    height: '100px'
   },
-  { 
-    id: 7, 
-    title: 'David Thulstrup', 
-    imageUrl: 'https://thearchitectureclub.com/wp-content/uploads/2023/03/David-Thulstrup-Phaidon-book.jpg',
-    description: 'Exploring the work of renowned architect and designer David Thulstrup.'
+  {
+    id: 7,
+    title: 'The Design of Everyday Things',
+    author: 'Don Norman',
+    imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/81c7Qj4iJWL.jpg', // Example
+    description: 'Revised and expanded edition on how design serves as the communication between object and user.',
+    readStatus: 'Currently Reading',
+    width: '68px', 
+    height: '102px'
   },
-  { 
-    id: 8, 
-    title: 'App Icon Book', 
-    imageUrl: 'https://th.bing.com/th/id/R.c0e8a08c15c72082b7e0eab14da6cc02?rik=gZYI3RJ%2fqbQKlw&riu=http%3a%2f%2fkyleaschacher.com%2fwp-content%2fuploads%2f2022%2f01%2fThe-Missing-8th-App-Icon-Book-1-400x600.jpg&ehk=Z3YT8C7F6b0%2fV4uKYn5qx1bHNsQhH0pR4y9ZOGj1EQg%3d&risl=&pid=ImgRaw&r=0',
-    description: 'A collection of exceptional app icon designs and their stories.'
+  {
+    id: 8,
+    title: 'Hooked: How to Build Habit-Forming Products',
+    author: 'Nir Eyal',
+    imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/71yDY3S2nSL.jpg',
+    description: 'A guide to building products people can’t put down.',
+    readStatus: 'Read',
+    notes: 'Insightful for product design.',
+    width: '65px', 
+    height: '100px'
   },
-  { 
-    id: 9, 
-    title: 'Finnish Architecture', 
-    imageUrl: 'https://images.ar.fi/images/article_images/4dd38ab8a8254f89ad1dbc55c75de9cd.jpg',
-    description: 'An exploration of Finland\'s distinctive architectural tradition.'
+  {
+    id: 9,
+    title: '100 Years of Swiss Design',
+    author: 'Museum für Gestaltung Zürich',
+    imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/81eB7Y6XNGL.jpg', // Example
+    description: 'A comprehensive overview of a century of influential Swiss design.',
+    readStatus: 'Unread',
+    width: '72px', 
+    height: '108px'
   },
-  { 
-    id: 10, 
-    title: 'Soled Out', 
-    imageUrl: 'https://thamesandhudsonusa.com/cdn/shop/files/tha-SoledOut-CVR_2_1024x1024_46ac1bc7-df44-4bb5-a4b8-a404c6a92d1d.jpg?v=1686327652',
-    description: 'The ultimate collection of sneaker advertising.'
-  },
-  
-  // Shelf 3 - Matches the image exactly
-  { 
-    id: 11, 
-    title: 'Jony Ive', 
-    imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/71f-m3r%2BA-L.jpg',
-    description: 'The life and work of Apple\'s chief design officer.'
-  },
-  { 
-    id: 12, 
-    title: 'Helvetica', 
-    imageUrl: 'https://mondoarchive.com/wp-content/uploads/2018/05/IMG_6559-810x1080.jpg',
-    description: 'A celebration of the world\'s most famous typeface.'
-  },
-  { 
-    id: 13, 
-    title: 'Design as Art', 
-    imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/71cpFWgwV6L.jpg',
-    description: 'Bruno Munari\'s classic examination of visual creativity.'
-  },
-  { 
-    id: 14, 
-    title: 'The Atlas of San Francisco', 
-    imageUrl: 'https://th.bing.com/th/id/OIP.OdBMJqKULNwO-v2bJ9SHAgHaLH?rs=1&pid=ImgDetMain',
-    description: 'A detailed cartographic exploration of the Bay Area\'s iconic city.'
-  },
-  { 
-    id: 15, 
-    title: 'Jobs', 
-    imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/51rW%2Bs0%2BbHL._SX332_BO1,204,203,200_.jpg',
-    description: 'Another perspective on the life of Steve Jobs.'
-  },
+  {
+    id: 10,
+    title: 'Grid Systems in Graphic Design',
+    author: 'Josef Müller-Brockmann',
+    imageUrl: 'https://images-na.ssl-images-amazon.com/images/I/717m7rN4NCL.jpg', // Example
+    description: 'A visual communication manual for graphic designers, typographers and three dimensional designers.',
+    readStatus: 'Read',
+    dateRead: 'Feb 2024',
+    width: '60px', 
+    height: '100px'
+  }
 ];
 
-// Function to chunk books into shelves
 function chunkArray<T>(array: T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let i = 0; i < array.length; i += size) {
-    result.push(array.slice(i, i + size));
-  }
-  return result;
+  return Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
+    array.slice(i * size, i * size + size)
+  );
 }
 
-const booksByShelf = chunkArray(books, 5); // 5 books per shelf
+const booksByShelf = chunkArray(books, 5);
 
-// Book component with enhanced 3D opening animation
 const Book = ({ book, isSelected, onSelect }: { 
-  book: typeof books[0]; 
+  book: BookEntry; 
   isSelected: boolean;
   onSelect: (id: number) => void;
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const coverRotation = useMotionValue(0);
-  const pagesRotation = useMotionValue(0);
-  
+  const [isHovered, setIsHovered] = useState(false);
+  const isOpen = isHovered || isSelected;
+
   return (
-    <motion.div 
-      className="relative cursor-pointer group perspective"
+    <motion.div
+      className={cn(
+        "relative mx-[4px] md:mx-[6px]", // Slightly increased margin for better spacing
+        isOpen ? "z-10" : "z-0",
+        "cursor-pointer"
+      )}
+      style={{
+        width: book.width,
+        height: book.height,
+        // Contact shadow for the book on the shelf
+        filter: isOpen 
+          ? 'drop-shadow(0px 8px 12px rgba(0,0,0,0.25)) drop-shadow(0px 2px 4px rgba(0,0,0,0.15))' 
+          : 'drop-shadow(0px 4px 6px rgba(0,0,0,0.15)) drop-shadow(0px 1px 2px rgba(0,0,0,0.1))',
+        transition: 'filter 0.3s ease-out',
+      }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
       onClick={() => onSelect(book.id)}
-      onHoverStart={() => setIsOpen(true)}
-      onHoverEnd={() => setIsOpen(false)}
-      style={{ 
-        transformStyle: 'preserve-3d',
-        position: 'relative',
-        bottom: '-2px', // Sit on the shelf visually
-      }}
-      animate={{
-        y: isSelected ? -15 : 0,
-        rotateY: isSelected ? -8 : 0,
-        z: isSelected ? 15 : 0,
-        transition: { type: 'spring', stiffness: 300, damping: 20 }
-      }}
     >
-      {/* 3D Book container */}
-      <div 
-        className="relative h-28 md:h-32 w-auto aspect-[2/3] overflow-visible"
-        style={{ transformStyle: 'preserve-3d' }}
+      <div
+        className="relative w-full h-full"
+        style={{ perspective: "1500px", transformStyle: "preserve-3d" }} // Increased perspective
       >
-        {/* Book Back Cover */}
-        <motion.div
-          className="absolute inset-0 bg-gray-800 rounded-sm shadow-md"
-          style={{ 
-            transformStyle: 'preserve-3d', 
-            backfaceVisibility: 'hidden',
-            transformOrigin: 'left center',
-          }}
-        ></motion.div>
-
-        {/* Book pages */}
-        <motion.div
-          className="absolute inset-0 bg-white rounded-r-sm"
+        {/* Book Spine - shows part of the cover image */}
+        <div
+          className="absolute inset-0 rounded-sm overflow-hidden shadow-lg"
           style={{
+            backgroundImage: `url(${book.imageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'left center', // Show left edge of image for spine
             transformStyle: 'preserve-3d',
-            transformOrigin: 'left center',
-            rotateY: pagesRotation,
+            borderRadius: '2px 0 0 2px', // Slightly rounded spine edge
           }}
-          animate={{
-            rotateY: isOpen ? -160 : 0,
-            transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] }
-          }}
-        >
-          {/* Page texture */}
-          <div 
-            className="absolute inset-0 overflow-hidden"
-            style={{
-              background: 'repeating-linear-gradient(to bottom, transparent, transparent 9px, rgba(0,0,0,0.03) 10px)',
-            }}
-          >
-            {/* Page edge shadow */}
-            <div className="absolute top-0 right-0 bottom-0 w-[3px] bg-gradient-to-l from-gray-300 to-transparent"></div>
-          </div>
-        </motion.div>
-        
-        {/* Book front cover */}
+        />
+
+        {/* Book Cover */}
         <motion.div
-          className="absolute inset-0 rounded-sm shadow-lg overflow-hidden"
-          style={{ 
+          className="absolute inset-0 rounded-sm shadow-xl overflow-hidden"
+          style={{
+            backgroundImage: `url(${book.imageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
             transformStyle: 'preserve-3d',
             transformOrigin: 'left center',
-            rotateY: coverRotation,
+            borderRadius: '0 2px 2px 0', // Slightly rounded cover edge
           }}
           animate={{
-            rotateY: isOpen ? -170 : 0,
-            transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] }
+            rotateY: isOpen ? -70 : 0, // Adjusted rotation for hardcover feel
+            transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }, // Smoother ease
           }}
         >
-          {/* Cover image */}
-          <img
-            src={book.imageUrl}
-            alt={book.title}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-          
-          {/* Inner cover highlight */}
-          <div 
-            className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-30"
-            style={{ pointerEvents: 'none' }}
-          ></div>
+          {/* Subtle gloss/highlight effect on cover */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-10 group-hover:opacity-5 transition-opacity"></div>
         </motion.div>
-        
-        {/* Book spine */}
-        <div 
-          className="absolute top-0 bottom-0 left-0 w-[6px] bg-gray-200 rounded-l-sm"
-          style={{ 
-            transformOrigin: 'left center',
-            transform: 'rotateY(90deg) translateX(-3px)',
-            background: `linear-gradient(to right, ${getColorFromImage(book.imageUrl)}, #f3f4f6)`,
-          }}
-        >
-          {/* Spine highlights */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"></div>
-        </div>
-        
-        {/* Book top edge */}
-        <div 
-          className="absolute left-0 right-0 top-0 h-[4px] bg-gray-100 rounded-t-sm"
-          style={{ 
-            transformOrigin: 'top center',
-            transform: 'rotateX(-90deg)',
-            background: 'linear-gradient(to bottom, #f9fafb, #f3f4f6)',
-          }}
-        ></div>
-        
-        {/* Book bottom edge */}
-        <div 
-          className="absolute left-0 right-0 bottom-0 h-[4px] bg-gray-200 rounded-b-sm"
-          style={{ 
-            transformOrigin: 'bottom center',
-            transform: 'rotateX(90deg)',
-            background: 'linear-gradient(to top, #e5e7eb, #f3f4f6)',
-          }}
-        ></div>
+
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              className="absolute -top-5 left-1/2 w-56 p-3.5 bg-gray-900 bg-opacity-85 backdrop-blur-lg text-white text-sm rounded-lg shadow-2xl z-20 pointer-events-none"
+              style={{ transform: "translateX(-50%)" }}
+              initial={{ opacity: 0, y: -15, scale: 0.9 }}
+              animate={{ opacity: 1, y: -30, scale: 1, transition: { delay: 0.1, duration: 0.3, ease: 'easeOut' } }}
+              exit={{ opacity: 0, y: -15, scale: 0.9, transition: { duration: 0.2, ease: 'easeIn' } }}
+            >
+              <h4 className="font-semibold text-base mb-1 truncate">{book.title}</h4>
+              {book.author && <p className="text-xs text-gray-300 mb-1.5">By {book.author}</p>}
+              {book.description && <p className="mb-2 text-gray-200 text-xs leading-snug">{book.description}</p>}
+              {book.readStatus && 
+                <p className="text-xs mb-1"><span className="font-medium text-gray-400">Status:</span> {book.readStatus}{book.dateRead ? ` (${book.dateRead})` : ''}</p>}
+              {book.notes && <p className="text-xs text-gray-400 italic"><span className="font-medium">Notes:</span> {book.notes}</p>}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {/* Book shadow */}
-      <motion.div 
-        className="absolute -bottom-1 left-1 right-1 h-4 rounded-full blur-sm"
-        style={{ 
-          background: 'radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 70%)',
-          transform: 'translateY(2px) rotateX(70deg) scale(0.9, 0.8)',
-          opacity: 0.2,
-        }}
-        animate={{
-          opacity: isOpen ? 0.4 : 0.2,
-          scale: isOpen ? [0.9, 1.1, 0.9] : 0.9,
-          transition: { duration: 0.5 }
-        }}
-      ></motion.div>
-
-      {/* Book tooltip */}
-      <AnimatePresence>
-        {isSelected && (
-          <motion.div
-            className="absolute bottom-full left-1/2 mb-3 p-2.5 bg-gray-800 text-white rounded-md shadow-lg w-52 z-20 pointer-events-none"
-            initial={{ opacity: 0, y: 10, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: 10, x: '-50%' }}
-            transition={{ duration: 0.2 }}
-          >
-            <h3 className="font-semibold text-xs tracking-wide leading-tight">{book.title}</h3>
-            <p className="text-xs text-gray-300 mt-1 leading-snug">{book.description}</p>
-            <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 };
 
-// Helper function to get a color from book image URL (simplified version)
-function getColorFromImage(imageUrl: string): string {
-  // This is a simplified approach - in a real app you might use a color extraction library
-  // For now, use a basic hash of the URL to generate a consistent color
-  const hash = imageUrl.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const hue = hash % 360;
-  return `hsl(${hue}, 70%, 35%)`;
-}
-
-// Shelf component restyled to match the image (white, 3D perspective)
 const Shelf = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className="relative my-8 w-full perspective group">
-        {/* Shelf Structure */}
-        <div className="relative w-full h-[18px]" style={{ transformStyle: "preserve-3d" }}>
-            {/* Top Surface */}
-            <div 
-                className="absolute inset-0 bg-gradient-to-b from-white to-gray-100 rounded-sm shadow-sm"
-                style={{
-                    transform: "rotateX(15deg) translateZ(-1px)", // Tilted perspective
-                    boxShadow: '0px 2px 5px rgba(0,0,0,0.05)'
-                }}
-            ></div>
-            {/* Front Edge */}
-            <div 
-                className="absolute bottom-0 left-0 w-full h-[12px] bg-gradient-to-t from-gray-200 to-gray-100 rounded-b-sm"
-                style={{
-                    transformOrigin: 'top center',
-                    transform: "rotateX(-75deg) translateY(12px) translateZ(0px)", // Angled front edge
-                    boxShadow: '0px 2px 3px rgba(0,0,0,0.1)'
-                }}
-            ></div>
-             {/* Subtle highlight on top edge */}
-            <div className="absolute top-0 left-0 right-0 h-px bg-white/80" style={{transform: "rotateX(15deg) translateZ(0px)"}}></div>
-        </div>
-
-        {/* Books container - Placed slightly above the visual shelf top */}
-        <div className="absolute -top-28 md:-top-32 left-0 right-0 flex items-end justify-center space-x-3 md:space-x-4 px-4">
-            {children}
-        </div>
-
-        {/* Overall Shelf Shadow */}
-        <div 
-            className="absolute -bottom-6 left-4 right-4 h-10 bg-black/20 rounded-full blur-xl opacity-60 group-hover:opacity-70 transition-opacity duration-300"
-            style={{
-                transform: "translateY(10px)" // Position shadow below the shelf
-            }}
-        >
-        </div>
+    <div className="relative w-full mb-14 md:mb-18">
+      {/* Container for books, ensuring they sit visually on the plank */}
+      <div className="relative flex justify-center items-end mb-[-1px] h-[110px] md:h-[125px]"> {/* Adjusted mb for thinner plank */}
+        {children}
+      </div>
+      <div className="relative w-[90%] md:w-[85%] mx-auto">
+        {/* Shelf Plank - thinner */}
+        <div className="h-[8px] bg-white rounded-sm shadow-md"></div> {/* Was shadow-lg, now shadow-md. Was h-[12px] */}
+        {/* Subtle floating shadow below the shelf plank */}
+        <div
+          className="absolute left-[5%] right-[5%] -bottom-[5px] h-[18px] bg-black/5 rounded-[50%] blur-lg opacity-60 z-[-1]"
+          // Refined shadow properties for a more subtle floating effect
+        ></div>
+      </div>
     </div>
   );
 };
@@ -338,49 +238,26 @@ export function BookshelfSection() {
   };
 
   return (
-    <Card className="relative overflow-hidden">
-      <div className="p-6 md:p-8">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">My Bookshelf</h2>
-        <p className="text-gray-600 mb-6">Design &amp; tech books that inspire me</p>
+    <Card className="relative overflow-hidden p-6 md:p-10 bg-gray-50">
+      <div className="grid grid-cols-1">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2.5">My bookshelf</h2>
+        <p className="text-gray-600 mb-10 md:mb-14 text-sm md:text-base">Design & tech books that inspire me</p>
         
-        <div className="space-y-4">
-          {/* First Shelf */}
-          <Shelf>
-            {booksByShelf[0].map(book => (
-              <Book 
-                key={book.id} 
-                book={book} 
-                isSelected={selectedBookId === book.id}
-                onSelect={handleSelectBook}
-              />
-            ))}
-          </Shelf>
-          
-          {/* Second Shelf */}
-          <Shelf>
-            {booksByShelf[1].map(book => (
-              <Book 
-                key={book.id} 
-                book={book} 
-                isSelected={selectedBookId === book.id}
-                onSelect={handleSelectBook}
-              />
-            ))}
-          </Shelf>
-          
-          {/* Third Shelf */}
-          <Shelf>
-            {booksByShelf[2].map(book => (
-              <Book 
-                key={book.id} 
-                book={book} 
-                isSelected={selectedBookId === book.id}
-                onSelect={handleSelectBook}
-              />
-            ))}
-          </Shelf>
+        <div className="space-y-12 md:space-y-16">
+          {booksByShelf.map((shelfBooks, index) => (
+            <Shelf key={`shelf-${index}`}>
+              {shelfBooks.map(book => (
+                <Book 
+                  key={book.id} 
+                  book={book} 
+                  isSelected={selectedBookId === book.id}
+                  onSelect={handleSelectBook}
+                />
+              ))}
+            </Shelf>
+          ))}
         </div>
       </div>
     </Card>
   );
-} 
+}
