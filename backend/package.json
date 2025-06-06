@@ -1,10 +1,34 @@
 {
-  "name": "backend",
-  "module": "index.ts",
+  "name": "drive-alternative-backend",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir ./dist"
+  },
+  "dependencies": {
+    "@pinata/sdk": "^latest",
+    "@supabase/supabase-js": "^latest",
+    "cors": "^latest",
+    "dotenv": "^latest",
+    "express": "^latest",
+    "express-rate-limit": "^latest",
+    "helmet": "^latest",
+    "jsonwebtoken": "^latest",
+    "multer": "^latest",
+    "uuid": "^latest",
+    "zod": "^latest"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/cors": "^latest",
+    "@types/express": "^latest",
+    "@types/jsonwebtoken": "^latest",
+    "@types/multer": "^latest",
+    "@types/node": "^latest",
+    "@types/uuid": "^latest"
   },
   "peerDependencies": {
     "typescript": "^5"
