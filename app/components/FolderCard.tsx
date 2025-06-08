@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
 
@@ -7,20 +7,30 @@ interface FolderCardProps {
   photoCount: number;
   imageUrls: string[]; // URLs for the photos peeking out
   stickerUrls: string[]; // URLs for sticker images on the folder [sticker1, sticker2]
+  folderId?: string; // Optional ID for navigation
 }
 
-export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = [] }: FolderCardProps) {
-  // Ensure we only use up to 3 images for the peeking effect, as in the reference image
+export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = [], folderId }: FolderCardProps) {
+  // Ensure we only use up to 3 images for the peeking effect
   const displayImageUrls = imageUrls.slice(0, 3);
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
+  
+  // Animation control refs
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const animatingRef = useRef(false);
 
-  // Use only the provided images, maybe more are loaded in modal?
+  // Use only the provided images for the modal
   const allImages = imageUrls; 
 
+  // Handle folder click - navigate to detail page instead of opening popup
   const handleFolderClick = () => {
-    setIsOpen(true);
+    // Uncomment this for navigation and comment out the setIsOpen line
+    window.location.href = `/folder/${folderId || encodeURIComponent(title.toLowerCase().replace(/\\s+/g, '-'))}`;
+    
+    // Comment this out when navigation is enabled
+    // setIsOpen(true);
   };
 
   const handleClose = () => {
@@ -42,13 +52,45 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
     setSelectedImage((prev) => (prev === allImages.length - 1 ? 0 : prev! + 1));
   };
 
+  // Enhanced hover handling with proper animation completion
+  const handleMouseEnter = () => {
+    // Clear any existing timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    animatingRef.current = true;
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    // Set a timeout to ensure animation completes smoothly
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+      animatingRef.current = false;
+    }, 50); // Small delay to prevent immediate state change
+  };
+
+  // Clean up timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <>
       <div 
         className="flex flex-col items-center group folder-container-hoverable" 
         onClick={handleFolderClick}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
         {/* Perspective container */}
         <div className="relative w-full aspect-[4/3] cursor-pointer perspective-container">
@@ -60,11 +102,18 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
               y: isHovered ? -5 : 0,
               rotateX: isHovered ? -30 : 0,
               rotateY: isHovered ? -3 : 0,
-              transition: { duration: 0.2, ease: "easeOut" }
+              transition: { duration: 0.3, ease: "easeOut" }
+            }}
+            onAnimationStart={() => {
+              animatingRef.current = true;
+            }}
+            onAnimationComplete={() => {
+              setTimeout(() => {
+                animatingRef.current = false;
+              }, 50);
             }}
           >
             {/* Folder cut-out shape */}
-            
           </motion.div>
 
           {/* Photos Peeking Out */}
@@ -88,16 +137,12 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
                   transformStyle: 'preserve-3d',
                 }}
                 animate={{ 
-                  // Static rotations are now handled by photo-item-X classes
-                  // Hover animations are also handled by photo-item-X classes via .folder-container-hoverable:hover
-                  // Only apply subtle individual hover lift here if needed, or rely on CSS transitions
                   y: isHovered ? - (index * 1.5) : 0, // Minimal individual lift, main lift from CSS
-                  transition: { type: 'spring', stiffness: 300, damping: 15 }
+                  transition: { type: 'spring', stiffness: 300, damping: 15, duration: 0.3 }
                 }}
                 whileHover={{ 
                   scale: 1.08, // Slightly more pronounced scale on direct photo hover
-                  // y and translateZ for direct photo hover can be more aggressive if desired
-                  // but ensure it complements the main folder hover animation
+                  // y and translateZ for direct photo hover can be more aggressive
                   y: -10 - (index * 2),
                   translateZ: (isHovered ? ((2-index) * 6 + 10) : ((2-index) * 4)) + 10, // Add to current Z
                   transition: { duration: 0.15 }
@@ -123,7 +168,7 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
             animate={{ 
               rotateX: isHovered ? -30 : 0,
               y: isHovered ? -2 : 0, // Minimal lift, main lift from parent group hover
-              transition: { duration: 0.2, ease: "easeOut" }
+              transition: { duration: 0.3, ease: "easeOut" }
             }}
           >
             {/* Subtle gradient/shine */}
@@ -133,7 +178,7 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
             <div className="absolute bottom-[30px] left-[15%] right-[15%] h-[1px] bg-white/25"></div>
             <div className="absolute bottom-[29px] left-[15%] right-[15%] h-[1px] bg-black/10"></div>
             
-            {/* Front sheen highlight (as per design spec) */}
+            {/* Front sheen highlight */}
             <div 
               className="absolute top-[40%] left-[50%] w-[500px] h-[160px] rounded-full"
               style={{
@@ -184,7 +229,7 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
             animate={{
               skewX: isHovered ? '-15deg' : '-20deg',
               y: isHovered ? -2 : 0,
-              transition: { duration: 0.2 }
+              transition: { duration: 0.3 }
             }}
           ></motion.div>
 
@@ -211,151 +256,79 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
         </div>
       </div>
 
-       {/* Modal (Existing structure, potentially enhance later if needed) */}
+      {/* Modal popup code - Commented out but preserved for future reference */}
+      {/* 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 md:p-8 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
             onClick={handleClose}
           >
-            <motion.div 
-              className="relative bg-white rounded-xl w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl"
+            <motion.div
+              className="relative bg-white w-full max-w-5xl mx-4 rounded-lg overflow-hidden"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              onClick={e => e.stopPropagation()} // Prevent closing modal when clicking inside
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
-                <h2 className="text-lg md:text-xl font-semibold">{title}</h2>
-                <button 
-                  className="p-1 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition-colors"
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+                <button
                   onClick={handleClose}
-                  aria-label="Close"
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
                 >
-                  {/* Using a simple X icon */}
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                   </svg>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-              
-              {/* Image grid */}
-              {/* TODO: Potentially load more images here dynamically */}
-              <div className="p-4 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {allImages.map((url, index) => (
-                  <motion.div
-                    key={index}
-                    className="aspect-square rounded-md overflow-hidden cursor-pointer shadow-md hover:shadow-lg transition-shadow duration-200 bg-gray-100"
-                    whileHover={{ scale: 1.03, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleImageClick(index)}
-                  >
-                    <img 
-                      src={url} 
-                      alt={`Photo ${index + 1}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy" // Lazy load images in the modal
-                    />
-                  </motion.div>
-                ))}
-                 {/* Placeholder if few images */}
-                 {allImages.length === 0 && <p className="text-gray-500 col-span-full text-center py-10">No photos available.</p>}
-              </div>
-            </motion.div>
 
-            {/* Full image viewer (unchanged from original, consider library like PhotoSwipe later) */}
-            <AnimatePresence>
-              {selectedImage !== null && (
-                <motion.div
-                  className="fixed inset-0 bg-black/90 z-[110] flex items-center justify-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImage(null);
-                  }}
-                >
-                   {/* Close Button */}
-                   <button 
-                    className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors z-10"
-                    onClick={(e) => { e.stopPropagation(); setSelectedImage(null); }}
-                    aria-label="Close image viewer"
+              {selectedImage !== null ? (
+                <div className="relative bg-black w-full aspect-video max-h-[70vh]">
+                  <img
+                    src={allImages[selectedImage]}
+                    alt={`Photo ${selectedImage + 1}`}
+                    className="w-full h-full object-contain"
+                  />
+                  <button
+                    onClick={handlePrevImage}
+                    className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-white/30 p-2 rounded-full hover:bg-white/50 transition-colors"
                   >
-                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                     </svg>
-                   </button>
-                  
-                   {/* Prev Button */}
-                   <button 
-                    className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors disabled:opacity-50"
-                    onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
-                    aria-label="Previous image"
-                    disabled={allImages.length <= 1}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                     </svg>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                    </svg>
                   </button>
-
-                  {/* Image Display */}
-                   <motion.div 
-                    className="relative flex items-center justify-center w-full h-full px-16 sm:px-24"
-                    key={selectedImage} // Allows animation on change
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                   >
-                     <img
-                      src={allImages[selectedImage]}
-                      alt={`Photo ${selectedImage + 1}`}
-                      className="max-w-full max-h-full object-contain rounded-lg shadow-xl"
-                      onClick={e => e.stopPropagation()} // Prevent clicks on image closing the viewer
-                     />
-                   </motion.div>
-
-                  {/* Next Button */}
-                   <button 
-                    className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors disabled:opacity-50"
-                    onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
-                    aria-label="Next image"
-                    disabled={allImages.length <= 1}
+                  <button
+                    onClick={handleNextImage}
+                    className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-white/30 p-2 rounded-full hover:bg-white/50 transition-colors"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                     </svg>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
                   </button>
-
-                  {/* Counter */}
-                   {allImages.length > 1 && (
-                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs">
-                      {selectedImage + 1} / {allImages.length}
+                </div>
+              ) : (
+                <div className="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {allImages.map((image, index) => (
+                    <div
+                      key={index}
+                      className="aspect-square rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => handleImageClick(index)}
+                    >
+                      <img src={image} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
                     </div>
-                   )}
-                </motion.div>
+                  ))}
+                </div>
               )}
-            </AnimatePresence>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+      */}
     </>
   );
 }
-
-// Helper class for shadow
-// Add this to your global CSS or tailwind.config.js if needed:
-/*
-.shadow-inner-light {
-  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.05);
-}
-.perspective {
-  perspective: 1000px;
-}
-*/
-
-// Also ensure tailwind.config.js enables perspective utilities if not already. 

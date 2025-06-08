@@ -1,8 +1,7 @@
 import { supabase } from '../config/supabase';
-import { pinata } from '../config/pinata';
-import { File, FilePermission } from './types';
-import { UserModel } from './userModel';
 import { v4 as uuidv4 } from 'uuid';
+import type { File, FilePermission } from './types';
+import { UserModel } from './userModel';
 
 /**
  * File model for handling file-related database operations
@@ -226,7 +225,8 @@ export const FileModel = {
   },
   
   /**
-   * Permanently delete a file from the database and Pinata IPFS
+   * Permanently delete a file from the database and storage
+   * Note: The actual file in R2 will be handled by the storage service
    */
   async permanentlyDeleteFile(id: string, userId: string): Promise<boolean> {
     // Check if the user has permission to delete the file
@@ -247,16 +247,6 @@ export const FileModel = {
     if (!file) {
       console.error('File not found');
       return false;
-    }
-    
-    // If it's a file (not folder), unpin from IPFS
-    if (!file.is_folder && file.ipfs_hash) {
-      try {
-        await pinata.unpin(file.ipfs_hash);
-      } catch (error) {
-        console.error('Error unpinning file from IPFS:', error);
-        // We continue with deletion even if unpinning fails
-      }
     }
     
     // Delete all permissions for the file
@@ -404,7 +394,15 @@ export const FileModel = {
   /**
    * Log a file activity
    */
-  async logActivity({ user_id, file_id, action, action_details = '', ip_address = '' }) {
+  async logActivity(params: {
+    user_id: string;
+    file_id: string;
+    action: string;
+    action_details?: string;
+    ip_address?: string;
+  }): Promise<void> {
+    const { user_id, file_id, action, action_details = '', ip_address = '' } = params;
+    
     const { error } = await supabase
       .from('activity_logs')
       .insert({
@@ -414,9 +412,9 @@ export const FileModel = {
         action,
         action_details,
         ip_address,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       });
-    
+
     if (error) {
       console.error('Error logging activity:', error);
     }

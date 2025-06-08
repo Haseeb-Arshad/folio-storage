@@ -6,14 +6,16 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun run --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir ./dist --target node",
+    "build": "bun build src/index.ts --outdir ./dist --target node --splitting --format esm --external=@aws-sdk/* --external=@supabase/* --external=express --external=jsonwebtoken --external=multer --external=uuid --external=zod --external=cors --external=dotenv --external=helmet --external=express-rate-limit",
     "prod": "NODE_ENV=production bun run start",
     "serve": "NODE_ENV=production bun run ./dist/index.js",
-    "clean": "rm -rf ./dist",
-    "rebuild": "bun run clean && bun run build",
+    "clean": "node scripts/cleanup.js",
+    "rebuild": "npm run clean && npm run build",
     "lint": "tsc --noEmit",
     "check-types": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "test:r2": "bun run build && node test-r2.mjs",
+    "test:r2-cjs": "bun run build && node test-r2.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.826.0",
