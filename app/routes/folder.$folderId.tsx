@@ -4,6 +4,7 @@ import type { MetaFunction, LoaderFunctionArgs } from '@remix-run/node';
 import { json } from '@remix-run/node';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '~/components/Card';
+import CreativeImageViewer from '~/components/CreativeImageViewer';
 
 // Import data and data management functions
 import { photoAlbums, photoAlbumsState, addPhotoToAlbum } from '../data/photo-albums';
@@ -87,14 +88,12 @@ export default function FolderDetail() {
     }
   };
 
-  const handlePrevImage = () => {
-    if (selectedImage === null) return;
-    setSelectedImage((prev) => (prev !== null && prev === 0 ? imageUrls.length - 1 : (prev ?? 0) - 1));
+  const handleCloseImageViewer = () => {
+    setSelectedImage(null);
   };
 
-  const handleNextImage = () => {
-    if (selectedImage === null) return;
-    setSelectedImage((prev) => (prev !== null && prev === imageUrls.length - 1 ? 0 : (prev ?? 0) + 1));
+  const handleNavigateImageViewer = (newIndex: number) => {
+    setSelectedImage(newIndex);
   };
 
   return (
@@ -210,53 +209,18 @@ export default function FolderDetail() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* End of Add media form modal */}
 
-      {/* Fullscreen image viewer */}
+      {/* Creative Image Viewer */}
       <AnimatePresence>
-        {selectedImage !== null && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-            onClick={() => setSelectedImage(null)}
-          >
-            <div className="relative w-full h-full flex items-center justify-center">
-              <motion.img
-                src={imageUrls[selectedImage]}
-                alt={`Photo ${selectedImage + 1}`}
-                className="max-w-[90%] max-h-[90vh] object-contain"
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ type: 'spring', damping: 25 }}
-              />
-              
-              <button
-                onClick={e => { e.stopPropagation(); handlePrevImage(); }}
-                className="absolute left-4 p-3 rounded-full bg-white/20 hover:bg-white/40 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              
-              <button
-                onClick={e => { e.stopPropagation(); handleNextImage(); }}
-                className="absolute right-4 p-3 rounded-full bg-white/20 hover:bg-white/40 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-
-              <div className="absolute bottom-6 left-0 right-0 text-center">
-                <p className="text-white font-medium">
-                  {selectedImage + 1} of {imageUrls.length}
-                </p>
-              </div>
-            </div>
-          </motion.div>
+        {selectedImage !== null && imageUrls && imageUrls.length > 0 && (
+          <CreativeImageViewer
+            isOpen={selectedImage !== null}
+            imageUrls={imageUrls}
+            currentIndex={selectedImage}
+            onClose={handleCloseImageViewer}
+            onNavigate={handleNavigateImageViewer}
+          />
         )}
       </AnimatePresence>
     </Card>
