@@ -2,6 +2,7 @@ import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { DocumentViewer } from "~/components/DocumentViewer";
 import { Card } from "~/components/Card";
+import { useEffect } from "react";
 
 export const loader = async () => {
   // Sample data for the Iliad books (matching the screenshot)
@@ -108,6 +109,22 @@ export const loader = async () => {
 
 export default function DocumentViewerRoute() {
   const { documentSections } = useLoaderData<typeof loader>();
+
+  // Hide top navbar when document viewer is shown
+  useEffect(() => {
+    // Find and hide the top navbar
+    const topNavbar = document.querySelector('.dashboard-top-navbar');
+    if (topNavbar) {
+      topNavbar.classList.add('hidden');
+    }
+
+    // Cleanup function to restore navbar when leaving this route
+    return () => {
+      if (topNavbar) {
+        topNavbar.classList.remove('hidden');
+      }
+    };
+  }, []);
 
   return (
     <div className="flex-1 relative overflow-hidden h-full">

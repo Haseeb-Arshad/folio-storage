@@ -8,6 +8,7 @@ import {
 } from "@remix-run/react";
 import type { LinksFunction } from "@remix-run/node";
 import { useEffect, useState } from "react";
+import { ThemeProvider } from "./context/theme-provider";
 
 import "./tailwind.css";
 import "./styles/theme.css";
@@ -26,7 +27,6 @@ export const links: LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const location = useLocation();
 
   // Add smooth page transitions
@@ -38,26 +38,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer);
   }, [location.pathname]);
 
-  // Check for system preference
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-      const systemPreference = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-      
-      setTheme(savedTheme || systemPreference);
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-  };
-
   return (
-    <html lang="en" className={theme}>
+    <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -65,9 +47,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-300">
-        <div className={`${isTransitioning ? "animate-fadeIn" : ""}`}>
-          {children}
-        </div>
+        <ThemeProvider defaultTheme="light">
+          <div className={`${isTransitioning ? "animate-fadeIn" : ""}`}>
+            {children}
+          </div>
+        </ThemeProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

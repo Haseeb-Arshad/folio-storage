@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
+import { useTheme } from '../context/theme-provider';
 
 // Define TypeScript interfaces
 interface BookSection {
@@ -19,6 +20,9 @@ export function DocumentViewer({ title = 'Document Viewer', sections = [], class
   // Safely handle empty sections array
   const safeSections = Array.isArray(sections) && sections.length > 0 ? sections : [];
   
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
+  
   const [activeSection, setActiveSection] = useState<string>(safeSections[0]?.id || '');
   const [menuOpen, setMenuOpen] = useState(false);
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
@@ -27,6 +31,12 @@ export function DocumentViewer({ title = 'Document Viewer', sections = [], class
   const contentRef = useRef<HTMLDivElement>(null);
   const topMenuRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  
+  // Function to truncate text with ellipsis
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + '...';
+  };
 
   // Set initial active section when sections change
   useEffect(() => {
@@ -55,127 +65,162 @@ export function DocumentViewer({ title = 'Document Viewer', sections = [], class
 
   const currentSection = getCurrentSection();
 
-  // Menu toggle animation variants
+  // Smooth menu animation variants
   const menuVariants = {
     closed: {
-      opacity: 0,
-      x: -100,
+      height: 0,
       transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 40
+        duration: 0.25,
+        ease: 'easeInOut'
       }
     },
     open: {
-      opacity: 1,
-      x: 0,
+      height: 'auto',
       transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 30,
-        staggerChildren: 0.04,
-        delayChildren: 0.1
+        duration: 0.3,
+        ease: 'easeInOut',
+        staggerChildren: 0.03
       }
     }
   } as const;
 
   const menuItemVariants = {
-    closed: { x: -20, opacity: 0 },
-    open: { x: 0, opacity: 1 }
+    closed: { y: -5, opacity: 0 },
+    open: { 
+      y: 0, 
+      opacity: 1,
+      transition: {
+        duration: 0.15,
+        ease: 'easeOut'
+      }
+    }
   };
 
   return (
     <div 
       ref={pageRef}
       className={cn(
-        "relative w-full h-full min-h-screen overflow-hidden bg-[#141414]", // Exact background color from reference
+        "relative w-full h-full min-h-screen overflow-hidden", 
+        isDarkMode ? "bg-[#141414]" : "bg-[#f5f5f5]", 
         className
       )}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
     >
-      {/* Background gradient for depth - exact match to reference image */}
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800 pointer-events-none opacity-95"></div>
-      <div className="absolute inset-0 bg-[#1a1a1a] opacity-50 pointer-events-none"></div>
+      {/* Hide top navbar when document viewer is open */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .dashboard-top-navbar { display: none !important; }
+          .document-viewer-fullscreen {
+            height: 100vh !important;
+            min-height: 100vh !important;
+            padding-top: 0 !important;
+          }
+          body { padding-top: 0 !important; }
+          .document-content p {
+            color: #000000 !important; /* Ensure paragraph text is black */
+          }
+        `
+      }} />
       
-      {/* Orange cursor dot for the entire page */}
-      <AnimatePresence>
-        {isHovering && (
-          <motion.div
-            className="fixed w-[10px] h-[10px] bg-orange-500 rounded-full pointer-events-none z-50 shadow-md shadow-orange-500/50"
-            style={{
-              left: cursorPosition.x - 5,
-              top: cursorPosition.y - 5
-            }}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-          />
-        )}
-      </AnimatePresence>
+      {/* Background with theme-aware gradient */}
+      <div className={cn(
+        "absolute inset-0 pointer-events-none",
+        isDarkMode 
+          ? "bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800" 
+          : "bg-white"
+      )}></div>
       
-      {/* Collapsible/expandable menu bar - matches reference image */}
+      {/* Orange dot cursor removed as requested */}
+      
+      {/* Collapsible/expandable menu bar - matches reference image exactly */}
       <div 
         ref={topMenuRef}
         className="absolute left-0 right-0 top-8 mx-auto shadow-xl z-30 transition-all duration-300 ease-in-out"
         style={{ 
-          width: menuOpen ? '90%' : '370px', 
-          maxWidth: menuOpen ? '90%' : '450px'
+          width: '370px', 
+          maxWidth: '450px'
         }}
       >
         <motion.div 
-          className="bg-[#2a2a2a] rounded-lg overflow-hidden relative"
-          animate={{ height: menuOpen ? 'auto' : '60px' }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className={cn(
+            "rounded-lg overflow-hidden relative shadow-lg",
+            isDarkMode ? "bg-[#1f1f1f]" : "bg-[#2a2a2a]"
+          )}
+          initial={false}
+          animate={{ 
+            maxHeight: menuOpen ? 500 : 60 
+          }}
+          transition={{
+            duration: 0.3,
+            ease: [0.4, 0, 0.2, 1]
+          }}
         >
           {/* Collapsed state shows only active section */}
           <div 
-            className="px-4 py-4 flex items-center justify-between cursor-pointer"
+            className="px-4 py-3 flex items-center justify-between cursor-pointer min-h-[60px]"
             onClick={() => setMenuOpen(!menuOpen)}
           >
-            <div className="text-orange-500 font-medium">
-              {currentSection?.title || "Select a section"}
+            <div className="text-orange-500 font-medium leading-snug mx-auto text-center w-[85%] truncate">
+              {truncateText(currentSection?.title || "Select a section", 45)}
             </div>
             <motion.div 
               animate={{ rotate: menuOpen ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.15, type: "spring", stiffness: 500 }}
+              className="text-orange-500"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>
             </motion.div>
           </div>
           
           {/* Expandable section list */}
-          {menuOpen && (
-            <div className="px-4 pb-4 pt-2 border-t border-gray-700/30">
-              <div className="flex flex-col space-y-2 text-sm">
-                {safeSections.map((section) => (
-                  <motion.div
-                    key={section.id}
-                    className={cn(
-                      "px-3 py-2 cursor-pointer rounded-md transition-all",
-                      activeSection === section.id 
-                        ? "text-orange-500" 
-                        : "text-gray-400 hover:text-gray-200"
-                    )}
-                    onClick={() => {
-                      changeSection(section.id);
-                      setMenuOpen(false); // Close menu after selection
-                    }}
-                    whileHover={{ x: 4 }}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {section.title}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
+          <AnimatePresence>
+            {menuOpen && (
+              <motion.div 
+                className="px-4 pb-4 pt-2 border-t border-gray-700/30"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ 
+                  type: "spring",
+                  stiffness: 700,
+                  damping: 30 
+                }}
+              >
+                <div className="flex flex-col space-y-2 text-sm">
+                  {safeSections.map((section, index) => (
+                    <motion.div
+                      key={section.id}
+                      className={cn(
+                        "px-3 py-2 cursor-pointer rounded-md transition-all",
+                        activeSection === section.id 
+                          ? "text-orange-500" 
+                          : "text-gray-100 hover:text-white"
+                      )}
+                      onClick={() => {
+                        changeSection(section.id);
+                        setMenuOpen(false); // Close menu after selection
+                      }}
+                      whileHover={{ x: 8, scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      custom={index}
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ 
+                        duration: 0.1, 
+                        delay: index * 0.03,
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 20
+                      }}
+                    >
+                      {section.title}
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
 
@@ -184,7 +229,12 @@ export function DocumentViewer({ title = 'Document Viewer', sections = [], class
       {/* Content Area with Fixed Bottom Blur */}
       <div className="absolute left-0 right-0 top-0 bottom-0 overflow-hidden">
         {/* Fixed bottom fade effect - does not scroll with content */}
-        <div className="absolute left-0 right-0 bottom-0 h-48 bg-gradient-to-t from-black to-transparent pointer-events-none z-10 opacity-90"></div>
+        <div className={cn(
+          "absolute left-0 right-0 bottom-0 h-48 bg-gradient-to-t pointer-events-none z-10 opacity-90",
+          isDarkMode 
+            ? "from-black to-transparent" 
+            : "from-white to-transparent"
+        )}></div>
         
         {/* Scrollable Content Area */}
         <div className="absolute inset-0 overflow-y-auto pt-28 pb-32">
@@ -193,13 +243,21 @@ export function DocumentViewer({ title = 'Document Viewer', sections = [], class
               <motion.div
                 key={activeSection}
                 ref={contentRef}
-                className="prose prose-invert max-w-3xl mx-auto px-10"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                className={cn(
+                  "max-w-3xl mx-auto px-10 text-base leading-relaxed",
+                  isDarkMode 
+                    ? "prose-invert prose-headings:text-white prose-li:text-gray-200" 
+                    : "prose prose-headings:text-black prose-li:text-gray-800 prose-strong:text-black prose-strong:font-semibold"
+                )}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.5 }}
               >
-                <h2 className="text-4xl font-serif mb-10 text-white tracking-tight font-medium">
+                <h2 className={cn(
+                  "text-4xl font-serif mb-10 tracking-tight font-medium",
+                  isDarkMode ? "text-white" : "text-gray-900"
+                )}>
                   {currentSection.title.split(':')[1] || currentSection.title}
                 </h2>
                 <div dangerouslySetInnerHTML={{ __html: currentSection.content }} />
