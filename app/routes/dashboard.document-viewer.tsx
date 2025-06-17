@@ -110,19 +110,11 @@ export default function DocumentViewerRoute() {
   const { documentSections } = useLoaderData<typeof loader>();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <Card className="max-w-6xl mx-auto p-0 overflow-hidden bg-white/80 backdrop-blur-lg">
-        <h1 className="sr-only">Document Viewer</h1>
-        <DocumentViewer 
-          sections={documentSections} 
-          className="shadow-none rounded-none"
-        />
-      </Card>
-      
-      <div className="mt-8 text-center text-gray-500 text-sm">
-        <p>Try navigating between book sections using the top navigation bar</p>
-        <p className="mt-1">Notice the orange cursor dot effect when hovering over the navigation</p>
-      </div>
+    <div className="flex-1 relative overflow-hidden h-full">
+      <DocumentViewer 
+        title="The Iliad" 
+        sections={documentSections}
+      />
     </div>
   );
 }
