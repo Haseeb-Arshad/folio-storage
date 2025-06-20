@@ -7,11 +7,11 @@ import { SidebarProvider } from "~/contexts/SidebarContext";
 export default function Dashboard() {
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-[var(--color-background)] dark:bg-[var(--color-card)]">
+      <div className="flex h-screen bg-white dark:bg-gray-900">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header />
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto">
             <Outlet />
           </main>
         </div>

@@ -1,0 +1,50 @@
+/* KnowledgeBase.module.css */
+/* Override background colors to ensure pure white backgrounds */
+.knowledgeContainer {
+  background-color: white;
+  color: var(--color-text);
+}
+
+/* Force white background on sidebar */
+.sidebar {
+  background-color: white !important; 
+  border-right: 1px solid var(--color-border-light);
+  box-shadow: none;
+}
+
+/* Remove padding from main content area */
+.contentArea {
+  padding: 0;
+}
+
+/* Folder grid and item styling to match reference UI */
+.folderGrid {
+  margin: 0;
+  padding: 0;
+}
+
+/* Override folder item styling */
+.folderItem {
+  background-color: white;
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.folderItem:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Dark mode overrides */
+:global(.dark) .knowledgeContainer {
+  background-color: var(--color-background-dark);
+}
+
+:global(.dark) .sidebar {
+  background-color: var(--color-background-dark) !important;
+}
+
+:global(.dark) .folderItem {
+  background-color: var(--color-card-dark);
+}

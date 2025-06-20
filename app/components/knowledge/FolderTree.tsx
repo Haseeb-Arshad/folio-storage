@@ -5,6 +5,7 @@ import {
   FolderIcon,
   DocumentIcon
 } from '@heroicons/react/24/outline';
+import "~/styles/knowledge-base.css";
 
 interface TreeItem {
   id: string;
@@ -18,20 +19,20 @@ interface FolderTreeProps {
   items: TreeItem[];
   onSelectItem: (item: TreeItem) => void;
   activePath?: string[];
-  level?: number;
-  isCollapsed?: boolean;
 }
 
 const FolderTree: React.FC<FolderTreeProps> = ({
   items,
   onSelectItem,
-  activePath = [],
-  level = 0,
-  isCollapsed = false
+  activePath = []
 }) => {
-  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
+    // Default expand some folders
+    "folder-1": true
+  });
   
-  const toggleFolder = (folderId: string) => {
+  const toggleFolder = (folderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setExpandedFolders(prev => ({
       ...prev,
       [folderId]: !prev[folderId]
@@ -40,91 +41,66 @@ const FolderTree: React.FC<FolderTreeProps> = ({
   
   const isActive = (itemId: string) => activePath.includes(itemId);
   
-  return (
-    <div className="w-full">
-      {items.map((item) => {
-        const isExpanded = !!expandedFolders[item.id];
-        const isItemActive = isActive(item.id);
-        
-        return (
-          <div key={item.id}>
-            <div 
-              className={`flex items-center py-1.5 px-3 rounded-md text-sm cursor-pointer
-                ${isItemActive ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 
-                'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}
-                ${level > 0 ? 'ml-' + level * 4 : ''}
-              `}
-              onClick={() => {
-                if (item.type === 'folder') {
-                  toggleFolder(item.id);
-                }
-                onSelectItem(item);
-              }}
-              style={{
-                paddingLeft: isCollapsed ? '0.75rem' : `${level * 0.75 + 0.75}rem`
-              }}
-            >
-              {item.type === 'folder' && (
-                <button 
-                  className="mr-1 p-0.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFolder(item.id);
-                  }}
-                >
-                  {isExpanded ? (
-                    <ChevronDownIcon className="w-3.5 h-3.5" />
-                  ) : (
-                    <ChevronRightIcon className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              )}
-              
-              {!isCollapsed && (
-                <>
-                  <div className="mr-2">
-                    {item.type === 'folder' ? (
-                      <FolderIcon className="w-4 h-4 text-blue-500" />
-                    ) : (
-                      <DocumentIcon className="w-4 h-4 text-gray-500" />
-                    )}
-                  </div>
-                  <span className={isCollapsed ? 'hidden' : 'truncate flex-1'}>
-                    {item.name}
-                  </span>
-                  {item.count !== undefined && (
-                    <span className="ml-1.5 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5">
-                      {item.count}
-                    </span>
-                  )}
-                </>
-              )}
-              
-              {isCollapsed && item.type === 'folder' && (
-                <div className="mx-auto">
-                  <FolderIcon className="w-5 h-5 text-blue-500" />
-                </div>
-              )}
-              {isCollapsed && item.type === 'file' && (
-                <div className="mx-auto">
-                  <DocumentIcon className="w-5 h-5 text-gray-500" />
-                </div>
-              )}
-            </div>
+  const renderTreeItems = (treeItems: TreeItem[], level = 0) => {
+    return treeItems.map(item => {
+      const isFolder = item.type === "folder";
+      const isExpanded = expandedFolders[item.id] || false;
+      const isItemActive = isActive(item.id);
+      
+      return (
+        <div key={item.id} style={{ paddingLeft: `${level * 16}px` }}>
+          <div 
+            className={`folder-tree-item flex items-center py-2 px-2 cursor-pointer transition-all duration-200 ${isItemActive ? 'active' : ''}`}
+            onClick={() => onSelectItem(item)}
+          >
+            {isFolder ? (
+              <button 
+                className="mr-1 focus:outline-none transition-transform duration-150"
+                onClick={(e) => toggleFolder(item.id, e)}
+                aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
+              >
+                {isExpanded ? (
+                  <ChevronDownIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                ) : (
+                  <ChevronRightIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                )}
+              </button>
+            ) : (
+              <span className="ml-5" />
+            )}
             
-            {/* Render children if this is a folder and it's expanded */}
-            {item.type === 'folder' && isExpanded && item.children && !isCollapsed && (
-              <FolderTree
-                items={item.children}
-                onSelectItem={onSelectItem}
-                activePath={activePath}
-                level={level + 1}
-                isCollapsed={isCollapsed}
-              />
+            <span className={`mr-2 ${isItemActive ? 'text-[var(--color-accent)]' : 'text-gray-500 dark:text-gray-400'}`}>
+              {isFolder ? (
+                <FolderIcon className="w-5 h-5" />
+              ) : (
+                <DocumentIcon className="w-5 h-5" />
+              )}
+            </span>
+            
+            <span className={`text-sm ${isItemActive ? '' : 'text-gray-700 dark:text-gray-300'}`}>
+              {item.name}
+            </span>
+            
+            {item.count !== undefined && (
+              <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">
+                {item.count}
+              </span>
             )}
           </div>
-        );
-      })}
+          
+          {isFolder && isExpanded && item.children && (
+            <div className="pl-4 overflow-hidden">
+              {renderTreeItems(item.children, level + 1)}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+  
+  return (
+    <div className="overflow-y-auto max-h-[70vh] pr-1">
+      {renderTreeItems(items)}
     </div>
   );
 };

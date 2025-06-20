@@ -17,6 +17,7 @@ const navigationItems = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
   { name: "My Files", href: "/dashboard/files", icon: DocumentIcon },
   { name: "Upload", href: "/dashboard/upload", icon: CloudArrowUpIcon },
+  { name: "Folders", href: "/dashboard/folders", icon: FolderIcon },
   { name: "Knowledge Base", href: "/dashboard/knowledge", icon: FolderIcon },
   { name: "AI Chat", href: "/dashboard/chat", icon: ChatBubbleLeftRightIcon },
   { name: "Search", href: "/dashboard/search", icon: MagnifyingGlassIcon },
