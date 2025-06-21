@@ -70,7 +70,7 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
                   // y and translateZ for direct photo hover can be more aggressive if desired
                   // but ensure it complements the main folder hover animation
                   y: -10 - (index * 2),
-                  translateZ: (isHovered ? ((2-index) * 6 + 10) : ((2-index) * 4)) + 10, // Add to current Z
+                  z: (isHovered ? ((2-index) * 6 + 10) : ((2-index) * 4)) + 10, // Add to current Z
                   transition: { duration: 0.15 }
                 }}
               >
@@ -119,7 +119,7 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
               <motion.img 
                 src={stickerUrls[0]} 
                 alt="sticker 1" 
-                className="absolute w-8 h-8 md:w-9 md:h-9 z-10" // Slightly smaller stickers
+                className="absolute w-8 h-8 md:w-9 md:h-9 z-10 rounded-full object-cover" // Slightly smaller stickers
                 style={{
                   bottom: '18%', // Adjusted position
                   left: '12%',
@@ -133,7 +133,7 @@ export function FolderCard({ title, photoCount, imageUrls = [], stickerUrls = []
               <motion.img 
                 src={stickerUrls[1]} 
                 alt="sticker 2" 
-                className="absolute w-8 h-8 md:w-9 md:h-9 z-10"
+                className="absolute w-8 h-8 md:w-9 md:h-9 z-10 rounded-full object-cover"
                 style={{
                   bottom: '15%', // Adjusted position
                   right: '12%',

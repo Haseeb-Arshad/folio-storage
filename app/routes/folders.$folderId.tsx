@@ -1,8 +1,8 @@
 import type { LoaderFunctionArgs, MetaFunction, ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, useFetcher } from "@remix-run/react";
-import { motion } from "framer-motion";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, FolderPlus, FolderUp, Upload } from "lucide-react";
 import { useState } from "react";
 import CreativeImageViewer, { type ImageFile } from "../components/CreativeImageViewer";
 import UploadModal from "../components/UploadModal";
@@ -117,12 +117,12 @@ export default function FolderRoute() {
           <h1 className="text-2xl md:text-4xl font-bold tracking-tighter">{album.title}</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-2">{images.length} photos</p>
         </div>
-        <button 
+        <button
           onClick={() => setUploadModalOpen(true)}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors duration-300"
+          className="flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 ease-in-out shadow-lg hover:shadow-xl transform hover:-translate-y-1"
         >
-          <PlusIcon className="w-5 h-5 mr-2" />
-          Upload
+          <Upload className="w-5 h-5 mr-3" />
+          Upload Files
         </button>
       </header>
 

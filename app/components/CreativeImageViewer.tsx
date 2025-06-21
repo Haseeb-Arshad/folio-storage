@@ -135,6 +135,22 @@ const CreativeImageViewer: React.FC<CreativeImageViewerProps> = ({ images, start
     }
   };
 
+  const handleApplyTitle = (newTitle: string) => {
+    setCurrentTitle(newTitle);
+    if (onSaveImageDetails && imageId) {
+      onSaveImageDetails(imageId, newTitle, currentDescription);
+    }
+    setActivePanel('details');
+  };
+
+  const handleApplyDescription = (newDescription: string) => {
+    setCurrentDescription(newDescription);
+    if (onSaveImageDetails && imageId) {
+      onSaveImageDetails(imageId, currentTitle, newDescription);
+    }
+    setActivePanel('details');
+  };
+
   const handleDownload = useCallback(async () => {
     if (!imageUrl) return;
     try {
@@ -155,7 +171,7 @@ const CreativeImageViewer: React.FC<CreativeImageViewerProps> = ({ images, start
       console.error('Download failed:', error);
       window.open(imageUrl, '_blank');
     }
-  }, [imageUrl, currentIndex, images]);
+  }, [imageUrl, currentIndex, images, currentTitle, currentDescription]);
 
   const togglePanel = (panel: 'details' | 'adjustments' | 'suggestions') => {
     setActivePanel(activePanel === panel ? null : panel);
@@ -326,7 +342,7 @@ const CreativeImageViewer: React.FC<CreativeImageViewerProps> = ({ images, start
                         <h4 className="font-semibold mb-2 text-white/80">Titles</h4>
                         <div className="space-y-2">
                           {aiSuggestions.titles.map((title, i) => (
-                            <button key={i} onClick={() => setCurrentTitle(title)} className="w-full text-left p-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm">{title}</button>
+                            <button key={i} onClick={() => handleApplyTitle(title)} className="w-full text-left p-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm">{title}</button>
                           ))}
                         </div>
                       </div>
@@ -334,7 +350,7 @@ const CreativeImageViewer: React.FC<CreativeImageViewerProps> = ({ images, start
                         <h4 className="font-semibold mb-2 text-white/80">Descriptions</h4>
                         <div className="space-y-2">
                           {aiSuggestions.descriptions.map((desc, i) => (
-                            <button key={i} onClick={() => setCurrentDescription(desc)} className="w-full text-left p-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm">{desc}</button>
+                            <button key={i} onClick={() => handleApplyDescription(desc)} className="w-full text-left p-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm">{desc}</button>
                           ))}
                         </div>
                       </div>
